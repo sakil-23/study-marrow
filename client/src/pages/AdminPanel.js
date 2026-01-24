@@ -16,7 +16,7 @@ function AdminPanel() {
 
   // 2. Load existing files when page opens
   useEffect(() => {
-    axios.get('http://localhost:5000/api/materials')
+    axios.get('https://study-marrow-api.onrender.com/api/materials')
       .then(res => setMaterials(res.data))
       .catch(err => console.error(err));
   }, [refresh]);
@@ -29,7 +29,7 @@ function AdminPanel() {
   // 4. Submit the new file to your Server
   const handleSubmit = (e) => {
     e.preventDefault();
-    axios.post('http://localhost:5000/api/materials', formData)
+    axios.post('https://study-marrow-api.onrender.com/api/materials', formData)
       .then(() => {
         alert('✅ Added Successfully!');
         // Clear the form so you can add another one
@@ -42,7 +42,7 @@ function AdminPanel() {
   // 5. Delete a file
   const handleDelete = (id) => {
     if(window.confirm("Are you sure you want to delete this?")) {
-      axios.delete(`http://localhost:5000/api/materials/${id}`)
+      axios.delete(`https://study-marrow-api.onrender.com/api/materials/${id}`)
         .then(() => {
           setRefresh(!refresh);
         });

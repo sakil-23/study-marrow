@@ -8,7 +8,7 @@ function CategoryPage() {
 
   useEffect(() => {
     // Fetch data specifically for this category
-    axios.get(`http://localhost:5000/api/materials/${categoryName}`)
+    axios.get(`https://study-marrow-api.onrender.com/api/materials/${categoryName}`)
       .then(res => setMaterials(res.data))
       .catch(err => console.error(err));
   }, [categoryName]);
