@@ -1,3 +1,6 @@
+import React, { useState, useEffect } from 'react'; // Add useState if missing
+import axios from 'axios';
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom'; // We use Link instead of <a>
 import axios from 'axios';
@@ -15,7 +18,21 @@ function Home() {
   const filteredMaterials = materials.filter(item => 
     item.title.toLowerCase().includes(search.toLowerCase())
   );
+  const [email, setEmail] = useState('');
 
+  const handleSubscribe = async (e) => {
+    e.preventDefault();
+    if (!email) return alert("Please enter an email!");
+    
+    try {
+      // Use your RENDER LINK here (not localhost)
+      await axios.post('https://study-marrow-api.onrender.com/api/subscribe', { email });
+      alert("🎉 You are now subscribed!");
+      setEmail(''); // Clear the box
+    } catch (err) {
+      alert(err.response?.data?.message || "Something went wrong.");
+    }
+  };
   return (
     <div>
       {/* Hero */}
@@ -46,6 +63,50 @@ function Home() {
             placeholder="Search for physics, notes, papers..." 
             onChange={(e) => setSearch(e.target.value)}
           />
+          {/* --- NEWSLETTER SECTION --- */}
+      <section style={{ 
+        marginTop: '4rem', 
+        padding: '3rem 1rem', 
+        background: 'linear-gradient(to right, #1e293b, #0f172a)', 
+        color: 'white', 
+        textAlign: 'center',
+        borderRadius: '20px 20px 0 0' 
+      }}>
+        <h2 style={{ marginBottom: '10px' }}>📩 Never Miss an Update</h2>
+        <p style={{ color: '#cbd5e1', marginBottom: '20px' }}>
+          Get notified when we upload new notes for Class 10 & 12.
+        </p>
+
+        <form onSubmit={handleSubscribe} style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <input 
+            type="email" 
+            placeholder="Enter your email address" 
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={{ 
+              padding: '12px 20px', 
+              borderRadius: '50px', 
+              border: 'none', 
+              width: '300px', 
+              fontSize: '1rem',
+              outline: 'none'
+            }} 
+          />
+          <button type="submit" style={{ 
+            padding: '12px 30px', 
+            borderRadius: '50px', 
+            border: 'none', 
+            background: '#2563eb', 
+            color: 'white', 
+            fontWeight: 'bold', 
+            cursor: 'pointer',
+            fontSize: '1rem',
+            transition: 'transform 0.2s'
+          }}>
+            Subscribe
+          </button>
+        </form>
+      </section>
         </div>
       </section>
 
