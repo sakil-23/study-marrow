@@ -60,50 +60,70 @@ function Home() {
             placeholder="Search for physics, notes, papers..." 
             onChange={(e) => setSearch(e.target.value)}
           />
-          {/* --- NEWSLETTER SECTION --- */}
-      <section style={{ 
-        marginTop: '4rem', 
-        padding: '3rem 1rem', 
-        background: 'linear-gradient(to right, #1e293b, #0f172a)', 
-        color: 'white', 
+          
+          {/* --- SLIM FOOTER NEWSLETTER --- */}
+      <footer style={{ 
+        marginTop: 'auto',              // Pushes it to the bottom
+        width: '100%',
+        padding: '1.5rem 0',            // Much smaller spacing (was 3rem)
+        background: '#0f172a',          // Dark background
+        borderTop: '1px solid #334155', // Subtle line at top
         textAlign: 'center',
-        borderRadius: '20px 20px 0 0' 
+        fontSize: '0.9rem'              // Smaller base font
       }}>
-        <h2 style={{ marginBottom: '10px' }}>📩 Never Miss an Update</h2>
-        <p style={{ color: '#cbd5e1', marginBottom: '20px' }}>
-          Get notified when we upload new notes for Class 10 & 12.
-        </p>
-
-        <form onSubmit={handleSubscribe} style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          <input 
-            type="email" 
-            placeholder="Enter your email address" 
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            style={{ 
-              padding: '12px 20px', 
-              borderRadius: '50px', 
-              border: 'none', 
-              width: '300px', 
-              fontSize: '1rem',
-              outline: 'none'
-            }} 
-          />
-          <button type="submit" style={{ 
-            padding: '12px 30px', 
-            borderRadius: '50px', 
-            border: 'none', 
-            background: '#2563eb', 
-            color: 'white', 
-            fontWeight: 'bold', 
-            cursor: 'pointer',
-            fontSize: '1rem',
-            transition: 'transform 0.2s'
+        <div style={{ maxWidth: '600px', margin: '0 auto', padding: '0 20px' }}>
+          
+          <h3 style={{ 
+            color: '#e2e8f0', 
+            fontSize: '1.1rem',         // Much smaller title (was h2)
+            marginBottom: '5px' 
           }}>
-            Subscribe
-          </button>
-        </form>
-      </section>
+            Stay Updated
+          </h3>
+          
+          <p style={{ color: '#94a3b8', marginBottom: '15px', fontSize: '0.85rem' }}>
+            Get notified when new Class 10 & 12 notes are uploaded.
+          </p>
+
+          <form onSubmit={handleSubscribe} style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            gap: '8px',
+            alignItems: 'center'
+          }}>
+            <input 
+              type="email" 
+              placeholder="Your email..." 
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              style={{ 
+                padding: '8px 12px',      // Smaller input box
+                borderRadius: '4px', 
+                border: '1px solid #475569', 
+                background: '#1e293b',
+                color: 'white',
+                width: '200px',
+                fontSize: '0.85rem'
+              }} 
+            />
+            <button type="submit" style={{ 
+              padding: '8px 16px',        // Smaller button
+              borderRadius: '4px', 
+              border: 'none', 
+              background: '#3b82f6',      // Blue button
+              color: 'white', 
+              cursor: 'pointer',
+              fontSize: '0.85rem'
+            }}>
+              Join
+            </button>
+          </form>
+          
+          <p style={{ marginTop: '20px', color: '#475569', fontSize: '0.7rem' }}>
+            © 2026 Study Marrow. Built for Students.
+          </p>
+        </div>
+      </footer>
         </div>
       </section>
 
