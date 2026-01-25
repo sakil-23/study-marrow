@@ -1,8 +1,5 @@
-import React, { useState, useEffect } from 'react'; // Add useState if missing
-import axios from 'axios';
-
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom'; // We use Link instead of <a>
+import { Link } from 'react-router-dom';
 import axios from 'axios';
 
 function Home() {
