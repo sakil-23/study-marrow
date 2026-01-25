@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import axios from 'axios';
 
 function Home() {
@@ -9,6 +8,7 @@ function Home() {
 
   // Fetch materials when page loads
   useEffect(() => {
+    // Make sure to use YOUR specific Render link here
     axios.get('https://study-marrow-api.onrender.com/api/materials')
       .then(res => setMaterials(res.data))
       .catch(err => console.log(err));
@@ -36,16 +36,7 @@ function Home() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
       
-      {/* --- NAVBAR --- */}
-      <nav style={{ padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-        <h1 style={{ color: '#6366f1', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ fontSize: '1.5rem' }}>🎓</span> STUDY MARROW
-        </h1>
-        <div>
-          <Link to="/" style={{ marginRight: '20px', textDecoration: 'none', color: '#334155', fontWeight: '500' }}>Home</Link>
-          <Link to="/library" style={{ textDecoration: 'none', color: '#334155', fontWeight: '500' }}>Library</Link>
-        </div>
-      </nav>
+      {/* (Navbar removed from here because it's already in App.js) */}
 
       {/* --- HERO SECTION --- */}
       <header style={{ 
