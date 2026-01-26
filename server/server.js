@@ -1,3 +1,5 @@
+const Subscriber = require('./models/Subscriber');
+
 // Add these lines at the VERY TOP of server.js
 const dns = require('dns');
 try { dns.setServers(['8.8.8.8', '8.8.4.4']); } catch (e) {}
@@ -49,4 +51,24 @@ app.use('/api/materials', materialRoutes);
 
 
 const PORT = process.env.PORT || 5000;
+// --- NEWSLETTER ROUTE ---
+app.post('/api/subscribe', async (req, res) => {
+    try {
+        const { email } = req.body;
+        
+        // 1. Check if email already exists
+        const exists = await Subscriber.findOne({ email });
+        if (exists) {
+            return res.status(400).json({ message: "You are already subscribed!" });
+        }
+
+        // 2. Save new email
+        const newSub = new Subscriber({ email });
+        await newSub.save();
+        
+        res.status(201).json({ message: "Successfully subscribed to updates!" });
+    } catch (err) {
+        res.status(500).json({ message: "Server error. Please try again." });
+    }
+});
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
