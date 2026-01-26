@@ -71,4 +71,16 @@ app.post('/api/subscribe', async (req, res) => {
         res.status(500).json({ message: "Server error. Please try again." });
     }
 });
+
+// --- GET ALL SUBSCRIBERS (For Admin) ---
+app.get('/api/subscribe', async (req, res) => {
+    try {
+        // Get all emails, newest first
+        const subs = await Subscriber.find().sort({ dateJoined: -1 });
+        res.json(subs);
+    } catch (err) {
+        res.status(500).json({ message: "Error fetching subscribers" });
+    }
+});
+
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
