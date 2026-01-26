@@ -46,21 +46,19 @@ const upload = multer({ storage });
 
 // 1. UPLOAD MATERIAL (With Subject & Type)
 // This matches the AdminPanel code I gave you
-app.post('/api/upload', upload.single('file'), async (req, res) => {
+// 1. UPLOAD MATERIAL (Link Version)
+// We removed 'upload.single' because we are just sending text now
+app.post('/api/upload', async (req, res) => {
     try {
-        const { title, category, subject, resourceType } = req.body;
-        
-        // Use the file path from Multer
-        // Note: On Render (free tier), files disappear after restart. 
-        // For permanent storage, we'd need AWS S3, but this works for now.
-        const link = req.file ? `https://study-marrow-api.onrender.com/uploads/${req.file.filename}` : '';
+        // We get the 'link' directly from the frontend now
+        const { title, category, subject, resourceType, link } = req.body; 
 
         const newMaterial = new Material({
             title,
             category,
-            subject,       // New Field
-            resourceType,  // New Field
-            link
+            subject,
+            resourceType,
+            link // Saves the URL you pasted
         });
 
         await newMaterial.save();
