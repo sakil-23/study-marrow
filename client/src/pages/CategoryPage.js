@@ -67,11 +67,18 @@ function CategoryPage() {
          categoryName}
       </h1>
 
-      {/* 1. Subjects Grid */}
+      {/* 1. Subjects Grid (WITH HOVER EFFECT) */}
       {!selectedSubject && isClass12 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
           {subjects.map((sub) => (
-            <div key={sub} onClick={() => setSelectedSubject(sub)} style={cardStyle}>
+            <div 
+              key={sub} 
+              onClick={() => setSelectedSubject(sub)} 
+              style={cardStyle}
+              // ✨ HOVER MAGIC ADDED HERE ✨
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+            >
               <div style={{ fontSize: '2.5rem' }}>📚</div>
               <h3>{sub}</h3>
               <p>View Notes & Papers</p>
@@ -80,13 +87,20 @@ function CategoryPage() {
         </div>
       )}
 
-      {/* 2. Types Grid */}
+      {/* 2. Types Grid (WITH HOVER EFFECT) */}
       {selectedSubject && !selectedType && (
         <div>
           <button onClick={() => setSelectedSubject(null)} style={backButtonStyle}>← Back to Subjects</button>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginTop: '20px' }}>
             {types.map((type) => (
-              <div key={type} onClick={() => setSelectedType(type)} style={cardStyle}>
+              <div 
+                key={type} 
+                onClick={() => setSelectedType(type)} 
+                style={cardStyle}
+                // ✨ HOVER MAGIC ADDED HERE TOO ✨
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+              >
                 <div style={{ fontSize: '2.5rem' }}>📁</div>
                 <h3>{type}</h3>
                 <p>{materials.filter(m => m.subject === selectedSubject && m.resourceType === type).length} Files</p>
@@ -113,8 +127,7 @@ function CategoryPage() {
                    <div style={{ flex: 1 }}>
                      <h4 style={{ margin: 0 }}>{file.title}</h4>
                      
-                     {/* --- DATE REMOVED FROM HERE --- */}
-                     {/* It now only shows the Subject (e.g. Physics) */}
+                     {/* Subject Label Only (Date Hidden) */}
                      <small style={{ color: '#64748b' }}>
                         {file.subject || file.category}
                      </small>
@@ -133,7 +146,17 @@ function CategoryPage() {
 }
 
 // Styles
-const cardStyle = { background: 'white', padding: '30px', borderRadius: '15px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', textAlign: 'center', cursor: 'pointer', border: '1px solid #e2e8f0', transition: 'transform 0.2s' };
+const cardStyle = { 
+  background: 'white', 
+  padding: '30px', 
+  borderRadius: '15px', 
+  boxShadow: '0 4px 6px rgba(0,0,0,0.05)', 
+  textAlign: 'center', 
+  cursor: 'pointer', 
+  border: '1px solid #e2e8f0', 
+  transition: 'transform 0.2s' // <--- This makes the hover smooth!
+};
+
 const fileCardStyle = { display: 'flex', alignItems: 'center', gap: '15px', background: 'white', padding: '15px', borderRadius: '10px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' };
 const backButtonStyle = { background: 'none', border: 'none', color: '#6366f1', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem', padding: 0 };
 const downloadButtonStyle = { textDecoration: 'none', background: '#3b82f6', color: 'white', padding: '8px 15px', borderRadius: '5px', fontSize: '0.9rem' };
