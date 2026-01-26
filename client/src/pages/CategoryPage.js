@@ -10,6 +10,10 @@ function CategoryPage() {
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [selectedType, setSelectedType] = useState(null);
 
+  // --- SMART CHECK: Is this the Class 12 Page? ---
+  // This fixes the mismatch issue (works for "Class 12" OR "Class 12 Materials")
+  const isClass12 = categoryName.includes('Class 12');
+
   useEffect(() => {
     // Reset selection when category changes
     setSelectedSubject(null);
@@ -17,21 +21,21 @@ function CategoryPage() {
 
     axios.get('https://study-marrow-api.onrender.com/api/materials')
       .then(res => {
-        // Only keep files for this main category (e.g. "Class 12 Materials")
-        const filtered = res.data.filter(item => item.category === categoryName);
+        // Filter logic: Match exact name OR match "Class 12 Materials" if we are on the Class 12 page
+        const filtered = res.data.filter(item => 
+            item.category === categoryName || 
+            (isClass12 && item.category === 'Class 12 Materials')
+        );
         setMaterials(filtered);
       })
       .catch(err => console.log(err));
-  }, [categoryName]);
+  }, [categoryName, isClass12]);
 
   // --- FILTERING LOGIC ---
-  // 1. Get List of Subjects for this Category
   const subjects = ['Physics', 'Chemistry', 'Biology', 'Maths'];
-  
-  // 2. Get List of Types
   const types = ['NCERT Solutions', 'Handwritten Notes', 'Previous Year Papers', 'Question Bank'];
 
-  // 3. Get Final Files to Display
+  // Get Final Files to Display
   const currentFiles = materials.filter(item => {
     if (selectedSubject && item.subject !== selectedSubject) return false;
     if (selectedType && item.resourceType !== selectedType) return false;
@@ -41,7 +45,7 @@ function CategoryPage() {
   return (
     <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', minHeight: '80vh' }}>
       
-      {/* BREADCRUMB NAVIGATION (e.g. Home > Class 12 > Physics) */}
+      {/* BREADCRUMB NAVIGATION */}
       <div style={{ marginBottom: '20px', color: '#64748b' }}>
         <Link to="/" style={{ textDecoration: 'none', color: '#3b82f6' }}>Home</Link> 
         {' > '} 
@@ -65,9 +69,9 @@ function CategoryPage() {
          categoryName}
       </h1>
 
-      {/* --- LEVEL 1: SUBJECT SELECTION --- */}
-      {/* Show only if NO subject is selected yet */}
-      {!selectedSubject && categoryName === 'Class 12 Materials' && (
+      {/* --- LEVEL 1: SUBJECT SELECTION (Physics, Chem...) --- */}
+      {/* Logic: Show this if we are on Class 12 page AND haven't picked a subject yet */}
+      {!selectedSubject && isClass12 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
           {subjects.map((sub) => (
             <div key={sub} onClick={() => setSelectedSubject(sub)} style={cardStyle}>
@@ -79,8 +83,7 @@ function CategoryPage() {
         </div>
       )}
 
-      {/* --- LEVEL 2: RESOURCE TYPE SELECTION --- */}
-      {/* Show if Subject IS selected, but Type is NOT */}
+      {/* --- LEVEL 2: RESOURCE TYPE SELECTION (Notes, Papers...) --- */}
       {selectedSubject && !selectedType && (
         <div>
           <button onClick={() => setSelectedSubject(null)} style={backButtonStyle}>← Back to Subjects</button>
@@ -89,6 +92,7 @@ function CategoryPage() {
               <div key={type} onClick={() => setSelectedType(type)} style={cardStyle}>
                 <div style={{ fontSize: '2.5rem' }}>📁</div>
                 <h3>{type}</h3>
+                {/* Count how many files exist for this folder */}
                 <p>{materials.filter(m => m.subject === selectedSubject && m.resourceType === type).length} Files</p>
               </div>
             ))}
@@ -97,10 +101,10 @@ function CategoryPage() {
       )}
 
       {/* --- LEVEL 3: FILE LIST --- */}
-      {/* Show if BOTH Subject and Type ARE selected (OR if it's not Class 12) */}
-      {(selectedType || categoryName !== 'Class 12 Materials') && (
+      {/* Show if Type is selected OR if it's NOT the Class 12 page (e.g. Current Affairs) */}
+      {(selectedType || !isClass12) && (
         <div>
-           {categoryName === 'Class 12 Materials' && (
+           {isClass12 && (
              <button onClick={() => setSelectedType(null)} style={backButtonStyle}>← Back to Folders</button>
            )}
            
@@ -113,7 +117,10 @@ function CategoryPage() {
                    <div style={{ fontSize: '1.5rem' }}>📄</div>
                    <div style={{ flex: 1 }}>
                      <h4 style={{ margin: 0 }}>{file.title}</h4>
-                     <small style={{ color: '#64748b' }}>Uploaded: {new Date(file.date).toLocaleDateString()}</small>
+                     <small style={{ color: '#64748b' }}>
+                        {file.subject ? `${file.subject} • ` : ''} 
+                        Uploaded: {new Date(file.date).toLocaleDateString()}
+                     </small>
                    </div>
                    <a href={file.link} target="_blank" rel="noreferrer" style={downloadButtonStyle}>Download</a>
                  </div>
