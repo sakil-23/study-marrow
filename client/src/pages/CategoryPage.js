@@ -13,7 +13,7 @@ function CategoryPage() {
   // --- SMART LOGIC ---
   const isClass12 = categoryName.includes('Class 12');
   const isClass10 = categoryName.includes('Class 10');
-  const isDeepFolder = isClass12 || isClass10; // Applies to both now
+  const isDeepFolder = isClass12 || isClass10;
 
   // --- DEFINE DATA FOR BOTH CLASSES ---
   let subjects = [];
@@ -21,19 +21,23 @@ function CategoryPage() {
 
   if (isClass12) {
       subjects = ['Physics', 'Chemistry', 'Biology', 'Maths'];
-      types = ['NCERT Solutions', 'Handwritten Notes', 'Previous Year Papers', 'Question Bank'];
+      // Updated List for Class 12
+      types = ['NCERT Book', 'NCERT Solutions', 'Handwritten Notes', 'Previous Year Papers', 'Question Bank'];
   } else if (isClass10) {
       subjects = ['English', 'Mathematics', 'General Science', 'Social Science', 'Information Technology'];
-      types = ['NCERT solutions', 'Notes', 'Syllabus', 'Previous Year Paper', 'Question Bank'];
+      // Updated List for Class 10
+      types = ['NCERT Book', 'NCERT solutions', 'Notes', 'Syllabus', 'Previous Year Paper', 'Question Bank'];
   }
 
   useEffect(() => {
     setSelectedSubject(null);
     setSelectedType(null);
 
+    // Console Log to verify new code is running
+    console.log("Category Page Loaded: " + categoryName);
+
     axios.get('https://study-marrow-api.onrender.com/api/materials')
       .then(res => {
-        // Smart Filter: Match generic category OR match specific folder category
         const filtered = res.data.filter(item => {
             if (item.category === categoryName) return true;
             if (isClass12 && item.category === 'Class 12 Materials') return true;
@@ -79,7 +83,7 @@ function CategoryPage() {
          categoryName}
       </h1>
 
-      {/* 1. Subjects Grid (Smart for 10 & 12) */}
+      {/* 1. Subjects Grid */}
       {!selectedSubject && isDeepFolder && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
           {subjects.map((sub) => (
@@ -98,7 +102,7 @@ function CategoryPage() {
         </div>
       )}
 
-      {/* 2. Types Grid (Smart for 10 & 12) */}
+      {/* 2. Types Grid */}
       {selectedSubject && !selectedType && (
         <div>
           <button onClick={() => setSelectedSubject(null)} style={backButtonStyle}>← Back to Subjects</button>
@@ -120,7 +124,7 @@ function CategoryPage() {
         </div>
       )}
 
-      {/* 3. File List (Shows for 10, 12, or plain categories like Current Affairs) */}
+      {/* 3. File List */}
       {(selectedType || !isDeepFolder) && (
         <div>
            {isDeepFolder && (
@@ -136,12 +140,9 @@ function CategoryPage() {
                    <div style={{ fontSize: '1.5rem' }}>📄</div>
                    <div style={{ flex: 1 }}>
                      <h4 style={{ margin: 0 }}>{file.title}</h4>
-                     
-                     {/* Clean Label (Date Hidden) */}
                      <small style={{ color: '#64748b' }}>
                         {file.subject || file.category}
                      </small>
-
                    </div>
                    <a href={file.link} target="_blank" rel="noreferrer" style={downloadButtonStyle}>Download</a>
                  </div>
