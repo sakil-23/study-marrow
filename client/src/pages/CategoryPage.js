@@ -10,8 +10,22 @@ function CategoryPage() {
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [selectedType, setSelectedType] = useState(null);
 
-  // Smart Check for Class 12
+  // --- SMART LOGIC ---
   const isClass12 = categoryName.includes('Class 12');
+  const isClass10 = categoryName.includes('Class 10');
+  const isDeepFolder = isClass12 || isClass10; // Applies to both now
+
+  // --- DEFINE DATA FOR BOTH CLASSES ---
+  let subjects = [];
+  let types = [];
+
+  if (isClass12) {
+      subjects = ['Physics', 'Chemistry', 'Biology', 'Maths'];
+      types = ['NCERT Solutions', 'Handwritten Notes', 'Previous Year Papers', 'Question Bank'];
+  } else if (isClass10) {
+      subjects = ['English', 'Mathematics', 'General Science', 'Social Science', 'Information Technology'];
+      types = ['NCERT solutions', 'Notes', 'Syllabus', 'Previous Year Paper', 'Question Bank'];
+  }
 
   useEffect(() => {
     setSelectedSubject(null);
@@ -19,19 +33,17 @@ function CategoryPage() {
 
     axios.get('https://study-marrow-api.onrender.com/api/materials')
       .then(res => {
-        // Filter logic
-        const filtered = res.data.filter(item => 
-            item.category === categoryName || 
-            (isClass12 && item.category === 'Class 12 Materials')
-        );
+        // Smart Filter: Match generic category OR match specific folder category
+        const filtered = res.data.filter(item => {
+            if (item.category === categoryName) return true;
+            if (isClass12 && item.category === 'Class 12 Materials') return true;
+            if (isClass10 && item.category === 'Class 10 Materials') return true;
+            return false;
+        });
         setMaterials(filtered);
       })
       .catch(err => console.log(err));
-  }, [categoryName, isClass12]);
-
-  // Folder Lists
-  const subjects = ['Physics', 'Chemistry', 'Biology', 'Maths'];
-  const types = ['NCERT Solutions', 'Handwritten Notes', 'Previous Year Papers', 'Question Bank'];
+  }, [categoryName, isClass12, isClass10]);
 
   // Final File Filter
   const currentFiles = materials.filter(item => {
@@ -67,27 +79,26 @@ function CategoryPage() {
          categoryName}
       </h1>
 
-      {/* 1. Subjects Grid (WITH HOVER EFFECT) */}
-      {!selectedSubject && isClass12 && (
+      {/* 1. Subjects Grid (Smart for 10 & 12) */}
+      {!selectedSubject && isDeepFolder && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
           {subjects.map((sub) => (
             <div 
               key={sub} 
               onClick={() => setSelectedSubject(sub)} 
               style={cardStyle}
-              // ✨ HOVER MAGIC ADDED HERE ✨
               onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
               onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
             >
               <div style={{ fontSize: '2.5rem' }}>📚</div>
               <h3>{sub}</h3>
-              <p>View Notes & Papers</p>
+              <p>View Materials</p>
             </div>
           ))}
         </div>
       )}
 
-      {/* 2. Types Grid (WITH HOVER EFFECT) */}
+      {/* 2. Types Grid (Smart for 10 & 12) */}
       {selectedSubject && !selectedType && (
         <div>
           <button onClick={() => setSelectedSubject(null)} style={backButtonStyle}>← Back to Subjects</button>
@@ -97,7 +108,6 @@ function CategoryPage() {
                 key={type} 
                 onClick={() => setSelectedType(type)} 
                 style={cardStyle}
-                // ✨ HOVER MAGIC ADDED HERE TOO ✨
                 onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
                 onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
               >
@@ -110,10 +120,10 @@ function CategoryPage() {
         </div>
       )}
 
-      {/* 3. File List */}
-      {(selectedType || !isClass12) && (
+      {/* 3. File List (Shows for 10, 12, or plain categories like Current Affairs) */}
+      {(selectedType || !isDeepFolder) && (
         <div>
-           {isClass12 && (
+           {isDeepFolder && (
              <button onClick={() => setSelectedType(null)} style={backButtonStyle}>← Back to Folders</button>
            )}
            
@@ -127,7 +137,7 @@ function CategoryPage() {
                    <div style={{ flex: 1 }}>
                      <h4 style={{ margin: 0 }}>{file.title}</h4>
                      
-                     {/* Subject Label Only (Date Hidden) */}
+                     {/* Clean Label (Date Hidden) */}
                      <small style={{ color: '#64748b' }}>
                         {file.subject || file.category}
                      </small>
@@ -154,7 +164,7 @@ const cardStyle = {
   textAlign: 'center', 
   cursor: 'pointer', 
   border: '1px solid #e2e8f0', 
-  transition: 'transform 0.2s' // <--- This makes the hover smooth!
+  transition: 'transform 0.2s'
 };
 
 const fileCardStyle = { display: 'flex', alignItems: 'center', gap: '15px', background: 'white', padding: '15px', borderRadius: '10px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' };
