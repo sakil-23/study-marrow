@@ -99,7 +99,6 @@ function AdminPanel() {
                         </select>
 
                         {/* 2. Subject Select (Changes based on Category) */}
-                        {/* LOGIC FOR CLASS 12 */}
                         {category === 'Class 12 Materials' && (
                             <select value={subject} onChange={(e) => setSubject(e.target.value)} style={inputStyle}>
                                 <option value="">-- Select Subject --</option>
@@ -110,7 +109,6 @@ function AdminPanel() {
                             </select>
                         )}
 
-                        {/* LOGIC FOR CLASS 10 (NEW) */}
                         {category === 'Class 10 Materials' && (
                             <select value={subject} onChange={(e) => setSubject(e.target.value)} style={inputStyle}>
                                 <option value="">-- Select Subject --</option>
@@ -125,10 +123,11 @@ function AdminPanel() {
 
                     {/* 3. Resource Type Select (Changes based on Category) */}
                     
-                    {/* CLASS 12 TYPES */}
+                    {/* CLASS 12 TYPES (Updated with NCERT Book) */}
                     {category === 'Class 12 Materials' && (
                         <select value={resourceType} onChange={(e) => setResourceType(e.target.value)} style={inputStyle}>
                             <option value="">-- Select Type --</option>
+                            <option>NCERT Book</option>  {/* <--- ADDED HERE */}
                             <option>NCERT Solutions</option>
                             <option>Handwritten Notes</option>
                             <option>Previous Year Papers</option>
@@ -136,10 +135,11 @@ function AdminPanel() {
                         </select>
                     )}
 
-                    {/* CLASS 10 TYPES (NEW) */}
+                    {/* CLASS 10 TYPES (Updated with NCERT Book) */}
                     {category === 'Class 10 Materials' && (
                         <select value={resourceType} onChange={(e) => setResourceType(e.target.value)} style={inputStyle}>
                             <option value="">-- Select Type --</option>
+                            <option>NCERT Book</option> {/* <--- ADDED HERE */}
                             <option>NCERT solutions</option>
                             <option>Notes</option>
                             <option>Syllabus</option>
