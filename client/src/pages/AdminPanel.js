@@ -3,19 +3,19 @@ import axios from 'axios';
 
 function AdminPanel() {
     // --- STATE ---
-    const [link, setLink] = useState(''); // Changed from 'file' to 'link'
+    const [link, setLink] = useState('');
     const [title, setTitle] = useState('');
-    const [category, setCategory] = useState('Class 12 Materials');
-    const [subject, setSubject] = useState('Physics');
-    const [resourceType, setResourceType] = useState('NCERT Solutions');
+    const [category, setCategory] = useState('Class 12 Materials'); // Default
+    const [subject, setSubject] = useState('');
+    const [resourceType, setResourceType] = useState('');
     
     const [materials, setMaterials] = useState([]);
-    const [subscribers, setSubscribers] = useState([]); // Subscriber State
+    const [subscribers, setSubscribers] = useState([]);
 
     // --- FETCH DATA ---
     useEffect(() => {
         fetchMaterials();
-        fetchSubscribers(); // Fetch emails on load
+        fetchSubscribers();
     }, []);
 
     const fetchMaterials = async () => {
@@ -36,13 +36,17 @@ function AdminPanel() {
     const handleUpload = async (e) => {
         e.preventDefault();
         
-        // We send JSON now, not FormData
+        // Validation: Ensure Subject/Type are selected if needed
+        if ((category.includes('Class')) && (!subject || !resourceType)) {
+            return alert("Please select both a Subject and a Resource Type!");
+        }
+
         const materialData = {
             title,
             category,
             subject,
             resourceType,
-            link // Sending the text link
+            link
         };
 
         try {
@@ -75,7 +79,7 @@ function AdminPanel() {
                     
                     <input 
                         type="text" 
-                        placeholder="File Title (e.g. Electric Charges Notes)" 
+                        placeholder="File Title (e.g. Real Numbers Notes)" 
                         value={title} 
                         onChange={(e) => setTitle(e.target.value)} 
                         required 
@@ -83,24 +87,48 @@ function AdminPanel() {
                     />
                     
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                        <select value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle}>
-                            <option>Class 10 Materials</option>
+                        {/* 1. Main Category Select */}
+                        <select value={category} onChange={(e) => {
+                            setCategory(e.target.value);
+                            setSubject('');       // Reset subject when switching category
+                            setResourceType('');  // Reset type when switching category
+                        }} style={inputStyle}>
                             <option>Class 12 Materials</option>
+                            <option>Class 10 Materials</option>
                             <option>Current Affairs</option>
                         </select>
 
+                        {/* 2. Subject Select (Changes based on Category) */}
+                        {/* LOGIC FOR CLASS 12 */}
                         {category === 'Class 12 Materials' && (
                             <select value={subject} onChange={(e) => setSubject(e.target.value)} style={inputStyle}>
+                                <option value="">-- Select Subject --</option>
                                 <option>Physics</option>
                                 <option>Chemistry</option>
                                 <option>Maths</option>
                                 <option>Biology</option>
                             </select>
                         )}
+
+                        {/* LOGIC FOR CLASS 10 (NEW) */}
+                        {category === 'Class 10 Materials' && (
+                            <select value={subject} onChange={(e) => setSubject(e.target.value)} style={inputStyle}>
+                                <option value="">-- Select Subject --</option>
+                                <option>English</option>
+                                <option>Mathematics</option>
+                                <option>General Science</option>
+                                <option>Social Science</option>
+                                <option>Information Technology</option>
+                            </select>
+                        )}
                     </div>
 
+                    {/* 3. Resource Type Select (Changes based on Category) */}
+                    
+                    {/* CLASS 12 TYPES */}
                     {category === 'Class 12 Materials' && (
                         <select value={resourceType} onChange={(e) => setResourceType(e.target.value)} style={inputStyle}>
+                            <option value="">-- Select Type --</option>
                             <option>NCERT Solutions</option>
                             <option>Handwritten Notes</option>
                             <option>Previous Year Papers</option>
@@ -108,7 +136,19 @@ function AdminPanel() {
                         </select>
                     )}
 
-                    {/* NEW LINK INPUT */}
+                    {/* CLASS 10 TYPES (NEW) */}
+                    {category === 'Class 10 Materials' && (
+                        <select value={resourceType} onChange={(e) => setResourceType(e.target.value)} style={inputStyle}>
+                            <option value="">-- Select Type --</option>
+                            <option>NCERT solutions</option>
+                            <option>Notes</option>
+                            <option>Syllabus</option>
+                            <option>Previous Year Paper</option>
+                            <option>Question Bank</option>
+                        </select>
+                    )}
+
+                    {/* LINK INPUT */}
                     <input 
                         type="url" 
                         placeholder="Paste PDF/Drive Link here (https://...)" 
@@ -122,7 +162,7 @@ function AdminPanel() {
                 </form>
             </div>
 
-            {/* --- SUBSCRIBER LIST (RESTORED) --- */}
+            {/* --- SUBSCRIBER LIST --- */}
             <div style={{ background: '#fff', padding: '20px', borderRadius: '10px', border: '1px solid #ddd', marginBottom: '30px' }}>
                 <h3 style={{ marginTop: 0, color: '#16a34a', borderBottom: '2px solid #16a34a', paddingBottom: '10px' }}>
                     📬 Subscriber List ({subscribers.length})
@@ -145,7 +185,7 @@ function AdminPanel() {
                 </div>
             </div>
             
-            {/* --- RECENT UPLOADS (FIXED ALIGNMENT) --- */}
+            {/* --- RECENT UPLOADS --- */}
             <div>
                 <h3>Recent Uploads</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -160,8 +200,6 @@ function AdminPanel() {
                                     {f.link.substring(0, 40)}...
                                 </a>
                             </div>
-                            
-                            {/* FIXED DELETE BUTTON ALIGNMENT */}
                             <button onClick={() => handleDelete(f._id)} style={deleteButtonStyle}>
                                 Delete
                             </button>
@@ -178,7 +216,7 @@ const inputStyle = { padding: '12px', borderRadius: '6px', border: '1px solid #c
 const buttonStyle = { padding: '12px', borderRadius: '6px', border: 'none', background: '#2563eb', color: 'white', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem' };
 const listItemStyle = { 
     display: 'flex', 
-    justifyContent: 'space-between', // Pushes Delete to the right
+    justifyContent: 'space-between', 
     alignItems: 'center', 
     padding: '15px', 
     background: 'white', 
