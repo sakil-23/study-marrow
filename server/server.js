@@ -8,7 +8,12 @@ const Material = require('./models/Material');
 const Subscriber = require('./models/Subscriber');
 
 const app = express();
-app.use(cors());
+// --- CORS CONFIGURATION (The VIP List) ---
+app.use(cors({
+    origin: ["https://study-marrow.vercel.app", "http://localhost:3000"], // Only allow your site & local testing
+    methods: ["GET", "POST", "DELETE"], // Only allow these actions
+    credentials: true
+}));
 app.use(express.json());
 
 // --- 🔒 SECURITY CONFIGURATION ---
