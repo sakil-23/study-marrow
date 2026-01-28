@@ -10,25 +10,22 @@ const Subscriber = require('./models/Subscriber');
 const app = express();
 
 // --- 🛡️ SECURITY: THE VIP LIST (CORS) ---
-// This tells the server: "Only talk to these specific websites."
 app.use(cors({
     origin: [
-        "https://study-marrow.vercel.app",  // 1. Your Current Live Site
-        "http://localhost:3000",            // 2. Your Local Testing
-        "https://studymarrow.com",          // 3. Future Domain (Ready & Waiting)
-        "https://www.studymarrow.com"       // 4. Future Domain (Ready & Waiting)
+        "https://study-marrow.vercel.app",
+        "http://localhost:3000",
+        "https://studymarrow.com",
+        "https://www.studymarrow.com"
     ],
-    methods: ["GET", "POST", "DELETE"], // Only allow these actions
+    methods: ["GET", "POST", "DELETE"],
     credentials: true
 }));
 
 app.use(express.json());
 
 // --- 🔐 SECURITY: THE LOCK (PASSWORD) ---
-// This checks the password you set in Render
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "mysecretpass";
 
-// Middleware: The Bouncer
 const verifyAdmin = (req, res, next) => {
     const providedPassword = req.headers['admin-key'];
     if (providedPassword !== ADMIN_PASSWORD) {
@@ -43,9 +40,13 @@ mongoose.connect(MONGO_URI)
     .then(() => console.log('MongoDB Connected'))
     .catch(err => console.log(err));
 
-// --- 🌍 PUBLIC ROUTES (No Password Needed) ---
+// --- ✅ NEW: HEALTH CHECK (FIXES TIMEOUT ERROR) ---
+// This tells Render: "I am alive! Don't kill me!"
+app.get('/', (req, res) => {
+    res.send('Server is running and healthy! 🚀');
+});
 
-// 1. Get Materials (For Students)
+// --- 🌍 PUBLIC ROUTES ---
 app.get('/api/materials', async (req, res) => {
     try {
         const materials = await Material.find().sort({ date: -1 });
@@ -55,7 +56,6 @@ app.get('/api/materials', async (req, res) => {
     }
 });
 
-// 2. Subscribe (For Students)
 app.post('/api/subscribe', async (req, res) => {
     try {
         const { email } = req.body;
@@ -70,14 +70,11 @@ app.post('/api/subscribe', async (req, res) => {
     }
 });
 
-// --- 🔐 PROTECTED ROUTES (Password Required) ---
-
-// 3. Verify Login
+// --- 🔐 PROTECTED ROUTES ---
 app.post('/api/verify-admin', verifyAdmin, (req, res) => {
     res.json({ success: true, message: "Welcome Admin!" });
 });
 
-// 4. Upload Material
 app.post('/api/upload', verifyAdmin, async (req, res) => {
     try {
         const { title, category, subject, resourceType, link } = req.body;
@@ -89,7 +86,6 @@ app.post('/api/upload', verifyAdmin, async (req, res) => {
     }
 });
 
-// 5. Delete Material
 app.delete('/api/materials/:id', verifyAdmin, async (req, res) => {
     try {
         await Material.findByIdAndDelete(req.params.id);
@@ -99,7 +95,6 @@ app.delete('/api/materials/:id', verifyAdmin, async (req, res) => {
     }
 });
 
-// 6. Get Subscriber List
 app.get('/api/subscribe', verifyAdmin, async (req, res) => {
     try {
         const subs = await Subscriber.find().sort({ dateJoined: -1 });
@@ -109,5 +104,7 @@ app.get('/api/subscribe', verifyAdmin, async (req, res) => {
     }
 });
 
+// --- 🚀 START SERVER ---
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// We explicitly bind to 0.0.0.0 to ensure Render finds it
+app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
