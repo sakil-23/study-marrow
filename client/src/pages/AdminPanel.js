@@ -2,21 +2,42 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 function AdminPanel() {
-    // --- STATE ---
+    // --- LOGIN STATE ---
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [passwordInput, setPasswordInput] = useState('');
+    const [adminKey, setAdminKey] = useState(''); // Stores the valid password
+
+    // --- DATA STATE ---
     const [link, setLink] = useState('');
     const [title, setTitle] = useState('');
-    const [category, setCategory] = useState('Class 12 Materials'); // Default
+    const [category, setCategory] = useState('Class 12 Materials');
     const [subject, setSubject] = useState('');
     const [resourceType, setResourceType] = useState('');
-    
     const [materials, setMaterials] = useState([]);
     const [subscribers, setSubscribers] = useState([]);
 
-    // --- FETCH DATA ---
-    useEffect(() => {
-        fetchMaterials();
-        fetchSubscribers();
-    }, []);
+    // --- LOGIN HANDLER ---
+    const handleLogin = async (e) => {
+        e.preventDefault();
+        try {
+            // Ask server if password is correct
+            await axios.post('https://study-marrow-api.onrender.com/api/verify-admin', {}, {
+                headers: { 'admin-key': passwordInput }
+            });
+            // If successful:
+            setAdminKey(passwordInput);
+            setIsAuthenticated(true);
+            fetchData(passwordInput); // Load data immediately
+        } catch (err) {
+            alert("❌ Wrong Password! Access Denied.");
+        }
+    };
+
+    // --- DATA FETCHING (Protected) ---
+    const fetchData = (key) => {
+        fetchMaterials(); // Public
+        fetchSubscribers(key); // Protected
+    };
 
     const fetchMaterials = async () => {
         try {
@@ -25,80 +46,89 @@ function AdminPanel() {
         } catch (err) { console.error(err); }
     };
 
-    const fetchSubscribers = async () => {
+    const fetchSubscribers = async (key) => {
         try {
-            const res = await axios.get('https://study-marrow-api.onrender.com/api/subscribe');
+            const res = await axios.get('https://study-marrow-api.onrender.com/api/subscribe', {
+                headers: { 'admin-key': key }
+            });
             setSubscribers(res.data);
         } catch (err) { console.error("Error fetching subscribers"); }
     };
 
-    // --- HANDLERS ---
+    // --- UPLOAD HANDLER (Protected) ---
     const handleUpload = async (e) => {
         e.preventDefault();
         
-        // Validation: Ensure Subject/Type are selected if needed
         if ((category.includes('Class')) && (!subject || !resourceType)) {
             return alert("Please select both a Subject and a Resource Type!");
         }
 
-        const materialData = {
-            title,
-            category,
-            subject,
-            resourceType,
-            link
-        };
+        const materialData = { title, category, subject, resourceType, link };
 
         try {
-            await axios.post('https://study-marrow-api.onrender.com/api/upload', materialData);
-            alert('Link Added Successfully!');
+            await axios.post('https://study-marrow-api.onrender.com/api/upload', materialData, {
+                headers: { 'admin-key': adminKey } // SEND THE KEY
+            });
+            alert('✅ Link Added Successfully!');
             setTitle('');
             setLink('');
-            fetchMaterials();
+            fetchData(adminKey);
         } catch (err) {
-            alert('Upload failed');
+            alert('Upload failed: ' + (err.response?.data?.message || "Server Error"));
         }
     };
 
+    // --- DELETE HANDLER (Protected) ---
     const handleDelete = async (id) => {
         if (!window.confirm("Delete this file?")) return;
         try {
-            await axios.delete(`https://study-marrow-api.onrender.com/api/materials/${id}`);
+            await axios.delete(`https://study-marrow-api.onrender.com/api/materials/${id}`, {
+                headers: { 'admin-key': adminKey } // SEND THE KEY
+            });
             fetchMaterials();
         } catch (err) { alert("Error deleting"); }
     };
 
+    // --- 🔒 LOGIN SCREEN RENDER ---
+    if (!isAuthenticated) {
+        return (
+            <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#f1f5f9' }}>
+                <form onSubmit={handleLogin} style={{ background: 'white', padding: '40px', borderRadius: '15px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', textAlign: 'center', maxWidth: '400px', width: '100%' }}>
+                    <h2 style={{ color: '#333', marginBottom: '20px' }}>🔐 Admin Access</h2>
+                    <input 
+                        type="password" 
+                        placeholder="Enter Password" 
+                        value={passwordInput}
+                        onChange={(e) => setPasswordInput(e.target.value)}
+                        style={{ width: '90%', padding: '12px', fontSize: '1rem', marginBottom: '20px', borderRadius: '5px', border: '1px solid #ccc' }}
+                    />
+                    <button type="submit" style={{ width: '100%', padding: '12px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '5px', fontSize: '1rem', cursor: 'pointer', fontWeight: 'bold' }}>
+                        Unlock Panel
+                    </button>
+                </form>
+            </div>
+        );
+    }
+
+    // --- DASHBOARD RENDER (Same as before) ---
     return (
         <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto', fontFamily: 'sans-serif' }}>
             <h1 style={{ textAlign: 'center', color: '#333' }}>⚡ Admin Command Center</h1>
 
-            {/* --- UPLOAD SECTION --- */}
+            {/* UPLOAD FORM */}
             <div style={{ background: '#f8f9fa', padding: '25px', borderRadius: '12px', marginBottom: '30px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
                 <h2 style={{ marginTop: 0, color: '#2563eb', marginBottom: '20px' }}>Add New Material</h2>
                 <form onSubmit={handleUpload} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                     
-                    <input 
-                        type="text" 
-                        placeholder="File Title (e.g. Real Numbers Notes)" 
-                        value={title} 
-                        onChange={(e) => setTitle(e.target.value)} 
-                        required 
-                        style={inputStyle} 
-                    />
+                    <input type="text" placeholder="File Title (e.g. Real Numbers Notes)" value={title} onChange={(e) => setTitle(e.target.value)} required style={inputStyle} />
                     
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                        {/* 1. Main Category Select */}
-                        <select value={category} onChange={(e) => {
-                            setCategory(e.target.value);
-                            setSubject('');       // Reset subject when switching category
-                            setResourceType('');  // Reset type when switching category
-                        }} style={inputStyle}>
+                        <select value={category} onChange={(e) => { setCategory(e.target.value); setSubject(''); setResourceType(''); }} style={inputStyle}>
                             <option>Class 12 Materials</option>
                             <option>Class 10 Materials</option>
                             <option>Current Affairs</option>
                         </select>
 
-                        {/* 2. Subject Select (Changes based on Category) */}
                         {category === 'Class 12 Materials' && (
                             <select value={subject} onChange={(e) => setSubject(e.target.value)} style={inputStyle}>
                                 <option value="">-- Select Subject --</option>
@@ -108,7 +138,6 @@ function AdminPanel() {
                                 <option>Biology</option>
                             </select>
                         )}
-
                         {category === 'Class 10 Materials' && (
                             <select value={subject} onChange={(e) => setSubject(e.target.value)} style={inputStyle}>
                                 <option value="">-- Select Subject --</option>
@@ -121,25 +150,20 @@ function AdminPanel() {
                         )}
                     </div>
 
-                    {/* 3. Resource Type Select (Changes based on Category) */}
-                    
-                    {/* CLASS 12 TYPES (Updated with NCERT Book) */}
                     {category === 'Class 12 Materials' && (
                         <select value={resourceType} onChange={(e) => setResourceType(e.target.value)} style={inputStyle}>
                             <option value="">-- Select Type --</option>
-                            <option>NCERT Book</option>  {/* <--- ADDED HERE */}
+                            <option>NCERT Book</option>
                             <option>NCERT Solutions</option>
                             <option>Handwritten Notes</option>
                             <option>Previous Year Papers</option>
                             <option>Question Bank</option>
                         </select>
                     )}
-
-                    {/* CLASS 10 TYPES (Updated with NCERT Book) */}
                     {category === 'Class 10 Materials' && (
                         <select value={resourceType} onChange={(e) => setResourceType(e.target.value)} style={inputStyle}>
                             <option value="">-- Select Type --</option>
-                            <option>NCERT Book</option> {/* <--- ADDED HERE */}
+                            <option>NCERT Book</option>
                             <option>NCERT solutions</option>
                             <option>Notes</option>
                             <option>Syllabus</option>
@@ -148,27 +172,18 @@ function AdminPanel() {
                         </select>
                     )}
 
-                    {/* LINK INPUT */}
-                    <input 
-                        type="url" 
-                        placeholder="Paste PDF/Drive Link here (https://...)" 
-                        value={link} 
-                        onChange={(e) => setLink(e.target.value)} 
-                        required 
-                        style={{ ...inputStyle, borderColor: '#2563eb', background: '#eff6ff' }} 
-                    />
-
+                    <input type="url" placeholder="Paste PDF/Drive Link here (https://...)" value={link} onChange={(e) => setLink(e.target.value)} required style={{ ...inputStyle, borderColor: '#2563eb', background: '#eff6ff' }} />
                     <button type="submit" style={buttonStyle}>Add Link</button>
                 </form>
             </div>
 
-            {/* --- SUBSCRIBER LIST --- */}
+            {/* SUBSCRIBER LIST */}
             <div style={{ background: '#fff', padding: '20px', borderRadius: '10px', border: '1px solid #ddd', marginBottom: '30px' }}>
                 <h3 style={{ marginTop: 0, color: '#16a34a', borderBottom: '2px solid #16a34a', paddingBottom: '10px' }}>
                     📬 Subscriber List ({subscribers.length})
                 </h3>
                 <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
-                    {subscribers.length === 0 ? <p>No subscribers yet.</p> : (
+                    {subscribers.length === 0 ? <p>No subscribers yet (or loading...).</p> : (
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <tbody>
                                 {subscribers.map((sub) => (
@@ -185,7 +200,7 @@ function AdminPanel() {
                 </div>
             </div>
             
-            {/* --- RECENT UPLOADS --- */}
+            {/* RECENT UPLOADS */}
             <div>
                 <h3>Recent Uploads</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -196,13 +211,8 @@ function AdminPanel() {
                                 <span style={{ fontSize: '0.8rem', color: '#666' }}>
                                     {f.category} • {f.subject} • {f.resourceType}
                                 </span>
-                                <a href={f.link} target="_blank" rel="noreferrer" style={{ fontSize: '0.75rem', color: '#2563eb', textDecoration: 'none' }}>
-                                    {f.link.substring(0, 40)}...
-                                </a>
                             </div>
-                            <button onClick={() => handleDelete(f._id)} style={deleteButtonStyle}>
-                                Delete
-                            </button>
+                            <button onClick={() => handleDelete(f._id)} style={deleteButtonStyle}>Delete</button>
                         </div>
                     ))}
                 </div>
@@ -211,23 +221,9 @@ function AdminPanel() {
     );
 }
 
-// --- STYLES ---
 const inputStyle = { padding: '12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '1rem' };
 const buttonStyle = { padding: '12px', borderRadius: '6px', border: 'none', background: '#2563eb', color: 'white', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem' };
-const listItemStyle = { 
-    display: 'flex', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    padding: '15px', 
-    background: 'white', 
-    border: '1px solid #eee', 
-    borderRadius: '8px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-};
-const deleteButtonStyle = { 
-    background: '#fee2e2', color: '#ef4444', border: 'none', 
-    padding: '8px 15px', borderRadius: '5px', cursor: 'pointer', 
-    fontWeight: 'bold', fontSize: '0.85rem' 
-};
+const listItemStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', background: 'white', border: '1px solid #eee', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' };
+const deleteButtonStyle = { background: '#fee2e2', color: '#ef4444', border: 'none', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' };
 
 export default AdminPanel;
