@@ -1,12 +1,9 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const multer = require('multer'); // Needed for file uploads
-const path = require('path');
-const fs = require('fs');
 require('dotenv').config();
 
-// Import Models
+// Models
 const Material = require('./models/Material');
 const Subscriber = require('./models/Subscriber');
 
@@ -14,8 +11,19 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Serve uploaded files statically so they can be downloaded
-app.use('/uploads', express.static('uploads'));
+// --- 🔒 SECURITY CONFIGURATION ---
+// CHANGE "mysecretpass" TO YOUR OWN UNIQUE PASSWORD HERE!
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "mysecretpass";
+
+// Middleware: The Bouncer
+// This function checks every request for the password
+const verifyAdmin = (req, res, next) => {
+    const providedPassword = req.headers['admin-key'];
+    if (providedPassword !== ADMIN_PASSWORD) {
+        return res.status(403).json({ message: "⛔ Access Denied: Wrong Password" });
+    }
+    next();
+};
 
 // --- DATABASE CONNECTION ---
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/eduportal';
@@ -23,52 +31,9 @@ mongoose.connect(MONGO_URI)
     .then(() => console.log('MongoDB Connected'))
     .catch(err => console.log(err));
 
-// --- MULTER CONFIGURATION (The File Uploader) ---
-// Ensure 'uploads' folder exists
-const uploadDir = 'uploads';
-if (!fs.existsSync(uploadDir)){
-    fs.mkdirSync(uploadDir);
-}
+// --- PUBLIC ROUTES (No Password Needed) ---
+// Students can verify materials and subscribe without a password
 
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/'); // Save files to 'uploads' folder
-    },
-    filename: (req, file, cb) => {
-        // Name file: Date-OriginalName (to prevent duplicates)
-        cb(null, Date.now() + '-' + file.originalname);
-    }
-});
-const upload = multer({ storage });
-
-
-// --- ROUTES ---
-
-// 1. UPLOAD MATERIAL (With Subject & Type)
-// This matches the AdminPanel code I gave you
-// 1. UPLOAD MATERIAL (Link Version)
-// We removed 'upload.single' because we are just sending text now
-app.post('/api/upload', async (req, res) => {
-    try {
-        // We get the 'link' directly from the frontend now
-        const { title, category, subject, resourceType, link } = req.body; 
-
-        const newMaterial = new Material({
-            title,
-            category,
-            subject,
-            resourceType,
-            link // Saves the URL you pasted
-        });
-
-        await newMaterial.save();
-        res.status(201).json(newMaterial);
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
-});
-
-// 2. GET ALL MATERIALS
 app.get('/api/materials', async (req, res) => {
     try {
         const materials = await Material.find().sort({ date: -1 });
@@ -78,8 +43,42 @@ app.get('/api/materials', async (req, res) => {
     }
 });
 
-// 3. DELETE MATERIAL
-app.delete('/api/materials/:id', async (req, res) => {
+app.post('/api/subscribe', async (req, res) => {
+    try {
+        const { email } = req.body;
+        const exists = await Subscriber.findOne({ email });
+        if (exists) return res.status(400).json({ message: "Already subscribed!" });
+        
+        const newSub = new Subscriber({ email });
+        await newSub.save();
+        res.status(201).json({ message: "Subscribed!" });
+    } catch (err) {
+        res.status(500).json({ message: "Server error" });
+    }
+});
+
+// --- 🔐 PROTECTED ROUTES (Password Required) ---
+// We add 'verifyAdmin' before the actual logic
+
+// 1. Verify Login (New Route to check password)
+app.post('/api/verify-admin', verifyAdmin, (req, res) => {
+    res.json({ success: true, message: "Welcome Admin!" });
+});
+
+// 2. Upload Material
+app.post('/api/upload', verifyAdmin, async (req, res) => {
+    try {
+        const { title, category, subject, resourceType, link } = req.body;
+        const newMaterial = new Material({ title, category, subject, resourceType, link });
+        await newMaterial.save();
+        res.status(201).json(newMaterial);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// 3. Delete Material
+app.delete('/api/materials/:id', verifyAdmin, async (req, res) => {
     try {
         await Material.findByIdAndDelete(req.params.id);
         res.json({ message: "Deleted successfully" });
@@ -88,24 +87,8 @@ app.delete('/api/materials/:id', async (req, res) => {
     }
 });
 
-// 4. SUBSCRIBE (Newsletter)
-app.post('/api/subscribe', async (req, res) => {
-    try {
-        const { email } = req.body;
-        const exists = await Subscriber.findOne({ email });
-        if (exists) {
-            return res.status(400).json({ message: "You are already subscribed!" });
-        }
-        const newSub = new Subscriber({ email });
-        await newSub.save();
-        res.status(201).json({ message: "Successfully subscribed!" });
-    } catch (err) {
-        res.status(500).json({ message: "Server error" });
-    }
-});
-
-// 5. GET SUBSCRIBERS (For Admin)
-app.get('/api/subscribe', async (req, res) => {
+// 4. Get Subscriber List (Admin Only)
+app.get('/api/subscribe', verifyAdmin, async (req, res) => {
     try {
         const subs = await Subscriber.find().sort({ dateJoined: -1 });
         res.json(subs);
@@ -115,4 +98,4 @@ app.get('/api/subscribe', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`)); 
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
