@@ -1,28 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 
 function Home() {
-  const [materials, setMaterials] = useState([]);
+  // 1. Kept 'search' state so the Hero Input works (visually)
   const [search, setSearch] = useState('');
-
-  useEffect(() => {
-    axios.get('https://study-marrow-api.onrender.com/api/materials')
-      .then(res => setMaterials(res.data))
-      .catch(err => console.error(err));
-  }, []);
-
-  const filteredMaterials = materials.filter(item => 
-    item.title.toLowerCase().includes(search.toLowerCase())
-  );
+  
+  // 2. Kept 'email' state for Newsletter
   const [email, setEmail] = useState('');
+
+  // Note: 'materials' state and 'useEffect' (fetching logic) were removed
+  // because the "Recently Added" section is gone.
 
   const handleSubscribe = async (e) => {
     e.preventDefault();
     if (!email) return alert("Please enter an email!");
     
     try {
-      // Use your RENDER LINK here (not localhost)
       await axios.post('https://study-marrow-api.onrender.com/api/subscribe', { email });
       alert("🎉 You are now subscribed!");
       setEmail(''); // Clear the box
@@ -30,11 +24,11 @@ function Home() {
       alert(err.response?.data?.message || "Something went wrong.");
     }
   };
+
   return (
     <div>
-      {/* Hero */}
-      
-        <section className="hero">
+      {/* --- HERO SECTION (UNCHANGED) --- */}
+      <section className="hero">
         {/* --- PARTICLE LAYER START --- */}
         <div className="particles">
           <span></span>
@@ -50,27 +44,26 @@ function Home() {
         </div>
         {/* --- PARTICLE LAYER END --- */}
 
-        
-        {/* ... rest of your code ... */}
         <h1>Welcome to Study Marrow</h1>
         <p>The core of your preparation. Access notes, papers, and articles instantly.</p>
+        
         <div className="search-container">
           <input 
             type="text" 
             placeholder="Search for physics, notes, papers..." 
             onChange={(e) => setSearch(e.target.value)}
+            value={search}
           />
-          
         </div>
       </section>
 
-      {/* Main Content */}
+      {/* --- MAIN CONTENT --- */}
       <div className="container">
         <h2 className="section-title">Browse by Category</h2>
         <div className="grid-categories">
           
           {/* Link to Class 10 */}
-          <Link to="/category/Class 10" style={{ textDecoration: 'none', color: 'inherit' }}>
+          <Link to="/category/Class 10 Materials" style={{ textDecoration: 'none', color: 'inherit' }}>
             <div className="card">
               <div className="card-icon"><i className="fas fa-book-open"></i></div>
               <h3>Class 10 Materials</h3>
@@ -79,7 +72,7 @@ function Home() {
           </Link>
 
           {/* Link to Class 12 */}
-          <Link to="/category/Class 12" style={{ textDecoration: 'none', color: 'inherit' }}>
+          <Link to="/category/Class 12 Materials" style={{ textDecoration: 'none', color: 'inherit' }}>
             <div className="card">
               <div className="card-icon"><i className="fas fa-microscope"></i></div>
               <h3>Class 12 Materials</h3>
@@ -97,23 +90,13 @@ function Home() {
           </Link>
         </div>
 
-        <h2 className="section-title">Recently Added Materials</h2>
-        <div className="recent-list">
-          {filteredMaterials.map((item) => (
-             <div className="recent-item" key={item._id}>
-                <i className={`fas ${item.type === 'PDF' ? 'fa-file-pdf' : 'fa-file-alt'} file-icon`}></i>
-                <div className="file-info">
-                  <span className="file-title">{item.title}</span>
-                  <span className="file-meta">{item.category} • {item.subCategory}</span>
-                </div>
-                <a href={item.link} target="_blank" rel="noopener noreferrer" className="download-btn">View</a>
-             </div>
-          ))}
-        </div>
+        {/* ❌ REMOVED: "Recently Added Materials" Section was here */}
+
       </div>
-      {/* --- SLIM FOOTER NEWSLETTER --- */}
+
+      {/* --- FOOTER (UNCHANGED) --- */}
       <footer style={{ 
-        marginTop: '5rem',              // Adds space above it
+        marginTop: '5rem',
         width: '100%',
         padding: '1.5rem 0',
         background: '#0f172a',
@@ -123,15 +106,10 @@ function Home() {
       }}>
         <div style={{ maxWidth: '600px', margin: '0 auto', padding: '0 20px' }}>
           
-          <h3 style={{ 
-            color: '#e2e8f0', 
-            fontSize: '1.1rem', 
-            marginBottom: '5px' 
-          }}>
+          <h3 style={{ color: '#e2e8f0', fontSize: '1.1rem', marginBottom: '5px' }}>
             Stay Updated
           </h3>
           
-          {/* UPDATED TEXT HERE */}
           <p style={{ color: '#94a3b8', marginBottom: '15px', fontSize: '0.85rem' }}>
             Get notified when materials are uploaded.
           </p>
@@ -176,8 +154,7 @@ function Home() {
         </div>
       </footer>
       
-    </div> // <--- PASTE IT RIGHT BEFORE THIS FINAL DIV
-    
+    </div>
   );
 }
 
