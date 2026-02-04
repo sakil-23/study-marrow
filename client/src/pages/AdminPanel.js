@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 
 function AdminPanel() {
     // --- LOGIN STATE ---
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [passwordInput, setPasswordInput] = useState('');
-    const [adminKey, setAdminKey] = useState(''); // Stores the valid password
+    const [adminKey, setAdminKey] = useState('');
 
     // --- DATA STATE ---
     const [link, setLink] = useState('');
@@ -20,23 +20,21 @@ function AdminPanel() {
     const handleLogin = async (e) => {
         e.preventDefault();
         try {
-            // Ask server if password is correct
             await axios.post('https://study-marrow-api.onrender.com/api/verify-admin', {}, {
                 headers: { 'admin-key': passwordInput }
             });
-            // If successful:
             setAdminKey(passwordInput);
             setIsAuthenticated(true);
-            fetchData(passwordInput); // Load data immediately
+            fetchData(passwordInput);
         } catch (err) {
             alert("❌ Wrong Password! Access Denied.");
         }
     };
 
-    // --- DATA FETCHING (Protected) ---
+    // --- DATA FETCHING ---
     const fetchData = (key) => {
-        fetchMaterials(); // Public
-        fetchSubscribers(key); // Protected
+        fetchMaterials();
+        fetchSubscribers(key);
     };
 
     const fetchMaterials = async () => {
@@ -55,7 +53,7 @@ function AdminPanel() {
         } catch (err) { console.error("Error fetching subscribers"); }
     };
 
-    // --- UPLOAD HANDLER (Protected) ---
+    // --- UPLOAD HANDLER ---
     const handleUpload = async (e) => {
         e.preventDefault();
         
@@ -67,29 +65,45 @@ function AdminPanel() {
 
         try {
             await axios.post('https://study-marrow-api.onrender.com/api/upload', materialData, {
-                headers: { 'admin-key': adminKey } // SEND THE KEY
+                headers: { 'admin-key': adminKey }
             });
             alert('✅ Link Added Successfully!');
             setTitle('');
             setLink('');
-            fetchData(adminKey);
+            fetchMaterials(); // Refresh list immediately
         } catch (err) {
             alert('Upload failed: ' + (err.response?.data?.message || "Server Error"));
         }
     };
 
-    // --- DELETE HANDLER (Protected) ---
+    // --- ✏️ NEW: EDIT HANDLER ---
+    const handleEdit = async (id, currentTitle) => {
+        const newTitle = window.prompt("Enter the new file name:", currentTitle);
+        if (!newTitle || newTitle === currentTitle) return; // Cancelled or same name
+
+        try {
+            await axios.put(`https://study-marrow-api.onrender.com/api/materials/${id}`, 
+                { title: newTitle }, 
+                { headers: { 'admin-key': adminKey } }
+            );
+            fetchMaterials(); // Refresh list to show new name
+        } catch (err) {
+            alert("❌ Update failed.");
+        }
+    };
+
+    // --- DELETE HANDLER ---
     const handleDelete = async (id) => {
         if (!window.confirm("Delete this file?")) return;
         try {
             await axios.delete(`https://study-marrow-api.onrender.com/api/materials/${id}`, {
-                headers: { 'admin-key': adminKey } // SEND THE KEY
+                headers: { 'admin-key': adminKey }
             });
             fetchMaterials();
         } catch (err) { alert("Error deleting"); }
     };
 
-    // --- 🔒 LOGIN SCREEN RENDER ---
+    // --- LOGIN SCREEN ---
     if (!isAuthenticated) {
         return (
             <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#f1f5f9' }}>
@@ -110,7 +124,7 @@ function AdminPanel() {
         );
     }
 
-    // --- DASHBOARD RENDER (Same as before) ---
+    // --- DASHBOARD ---
     return (
         <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto', fontFamily: 'sans-serif' }}>
             <h1 style={{ textAlign: 'center', color: '#333' }}>⚡ Admin Command Center</h1>
@@ -183,7 +197,7 @@ function AdminPanel() {
                     📬 Subscriber List ({subscribers.length})
                 </h3>
                 <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
-                    {subscribers.length === 0 ? <p>No subscribers yet (or loading...).</p> : (
+                    {subscribers.length === 0 ? <p>No subscribers yet.</p> : (
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <tbody>
                                 {subscribers.map((sub) => (
@@ -200,11 +214,11 @@ function AdminPanel() {
                 </div>
             </div>
             
-            {/* RECENT UPLOADS */}
+            {/* RECENT UPLOADS with EDIT BUTTON */}
             <div>
                 <h3>Recent Uploads</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {materials.slice(0, 10).map(f => (
+                    {materials.slice(0, 15).map(f => (
                         <div key={f._id} style={listItemStyle}>
                             <div style={{ display: 'flex', flexDirection: 'column' }}>
                                 <strong style={{ color: '#333' }}>{f.title}</strong> 
@@ -212,7 +226,10 @@ function AdminPanel() {
                                     {f.category} • {f.subject} • {f.resourceType}
                                 </span>
                             </div>
-                            <button onClick={() => handleDelete(f._id)} style={deleteButtonStyle}>Delete</button>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button onClick={() => handleEdit(f._id, f.title)} style={editButtonStyle}>Edit</button>
+                                <button onClick={() => handleDelete(f._id)} style={deleteButtonStyle}>Delete</button>
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -225,5 +242,6 @@ const inputStyle = { padding: '12px', borderRadius: '6px', border: '1px solid #c
 const buttonStyle = { padding: '12px', borderRadius: '6px', border: 'none', background: '#2563eb', color: 'white', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem' };
 const listItemStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', background: 'white', border: '1px solid #eee', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' };
 const deleteButtonStyle = { background: '#fee2e2', color: '#ef4444', border: 'none', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' };
+const editButtonStyle = { background: '#fef08a', color: '#854d0e', border: 'none', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' };
 
 export default AdminPanel;
