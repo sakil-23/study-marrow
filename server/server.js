@@ -17,7 +17,7 @@ app.use(cors({
         "https://studymarrow.com",
         "https://www.studymarrow.com"
     ],
-    methods: ["GET", "POST", "DELETE"],
+    methods: ["GET", "POST", "DELETE", "PUT"], // ✅ ADDED "PUT" HERE
     credentials: true
 }));
 
@@ -40,8 +40,7 @@ mongoose.connect(MONGO_URI)
     .then(() => console.log('MongoDB Connected'))
     .catch(err => console.log(err));
 
-// --- ✅ NEW: HEALTH CHECK (FIXES TIMEOUT ERROR) ---
-// This tells Render: "I am alive! Don't kill me!"
+// --- ✅ HEALTH CHECK ---
 app.get('/', (req, res) => {
     res.send('Server is running and healthy! 🚀');
 });
@@ -86,6 +85,21 @@ app.post('/api/upload', verifyAdmin, async (req, res) => {
     }
 });
 
+// ✅ NEW ROUTE: RENAME MATERIAL
+app.put('/api/materials/:id', verifyAdmin, async (req, res) => {
+    try {
+        const { title } = req.body;
+        const updatedMaterial = await Material.findByIdAndUpdate(
+            req.params.id, 
+            { title }, 
+            { new: true }
+        );
+        res.json(updatedMaterial);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 app.delete('/api/materials/:id', verifyAdmin, async (req, res) => {
     try {
         await Material.findByIdAndDelete(req.params.id);
@@ -104,7 +118,5 @@ app.get('/api/subscribe', verifyAdmin, async (req, res) => {
     }
 });
 
-// --- 🚀 START SERVER ---
 const PORT = process.env.PORT || 5000;
-// We explicitly bind to 0.0.0.0 to ensure Render finds it
 app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
