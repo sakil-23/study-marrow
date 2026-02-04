@@ -1,25 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 
 function Home() {
-  // 1. Kept 'search' state so the Hero Input works (visually)
+  // 1. Search State
   const [search, setSearch] = useState('');
   
-  // 2. Kept 'email' state for Newsletter
+  // 2. Newsletter State
   const [email, setEmail] = useState('');
 
-  // Note: 'materials' state and 'useEffect' (fetching logic) were removed
-  // because the "Recently Added" section is gone.
+  // 3. RESTORED: Data State (The "Brain")
+  const [materials, setMaterials] = useState([]);
+
+  // 4. RESTORED: Fetch Logic (Get data in background)
+  useEffect(() => {
+    axios.get('https://study-marrow-api.onrender.com/api/materials')
+      .then(res => setMaterials(res.data))
+      .catch(err => console.error(err));
+  }, []);
+
+  // 5. RESTORED: Filter Logic (The "Search Engine")
+  const filteredMaterials = materials.filter(item => 
+    item.title.toLowerCase().includes(search.toLowerCase()) ||
+    item.subject?.toLowerCase().includes(search.toLowerCase()) ||
+    item.category?.toLowerCase().includes(search.toLowerCase())
+  );
 
   const handleSubscribe = async (e) => {
     e.preventDefault();
     if (!email) return alert("Please enter an email!");
-    
     try {
       await axios.post('https://study-marrow-api.onrender.com/api/subscribe', { email });
       alert("🎉 You are now subscribed!");
-      setEmail(''); // Clear the box
+      setEmail(''); 
     } catch (err) {
       alert(err.response?.data?.message || "Something went wrong.");
     }
@@ -31,16 +44,8 @@ function Home() {
       <section className="hero">
         {/* --- PARTICLE LAYER START --- */}
         <div className="particles">
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
+          <span></span><span></span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span><span></span>
         </div>
         {/* --- PARTICLE LAYER END --- */}
 
@@ -59,6 +64,36 @@ function Home() {
 
       {/* --- MAIN CONTENT --- */}
       <div className="container">
+
+        {/* ✅ NEW: SEARCH RESULTS SECTION (Only appears when you type!) */}
+        {search.length > 0 && (
+          <div style={{ marginBottom: '40px', animation: 'fadeIn 0.3s ease-in-out' }}>
+            <h2 className="section-title">
+              Search Results for "{search}" ({filteredMaterials.length})
+            </h2>
+            
+            {filteredMaterials.length === 0 ? (
+              <p style={{ textAlign: 'center', color: '#64748b' }}>No materials found.</p>
+            ) : (
+              <div className="recent-list">
+                {filteredMaterials.map((item) => (
+                  <div className="recent-item" key={item._id}>
+                    <i className={`fas ${item.resourceType === 'NCERT Book' ? 'fa-book' : 'fa-file-alt'} file-icon`}></i>
+                    <div className="file-info">
+                      <span className="file-title">{item.title}</span>
+                      <span className="file-meta">
+                        {item.category} • {item.subject} • {item.resourceType}
+                      </span>
+                    </div>
+                    <a href={item.link} target="_blank" rel="noopener noreferrer" className="download-btn">View</a>
+                  </div>
+                ))}
+              </div>
+            )}
+            <hr style={{ margin: '30px 0', border: '0', borderTop: '1px solid #e2e8f0' }} />
+          </div>
+        )}
+
         <h2 className="section-title">Browse by Category</h2>
         <div className="grid-categories">
           
@@ -89,9 +124,6 @@ function Home() {
             </div>
           </Link>
         </div>
-
-        {/* ❌ REMOVED: "Recently Added Materials" Section was here */}
-
       </div>
 
       {/* --- FOOTER (UNCHANGED) --- */}
