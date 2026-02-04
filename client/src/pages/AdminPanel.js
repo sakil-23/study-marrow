@@ -13,8 +13,16 @@ function AdminPanel() {
     const [category, setCategory] = useState('Class 12 Materials');
     const [subject, setSubject] = useState('');
     const [resourceType, setResourceType] = useState('');
-    const [materials, setMaterials] = useState([]);
+    
+    const [materials, setMaterials] = useState([]); 
     const [subscribers, setSubscribers] = useState([]);
+
+    // --- DEFINED STRUCTURE FOR VIEWING ---
+    const structure = {
+        'Class 12 Materials': ['Physics', 'Chemistry', 'Maths', 'Biology'],
+        'Class 10 Materials': ['English', 'Mathematics', 'General Science', 'Social Science', 'Information Technology'],
+        'Current Affairs': [] // No subjects for this one
+    };
 
     // --- LOGIN HANDLER ---
     const handleLogin = async (e) => {
@@ -70,23 +78,23 @@ function AdminPanel() {
             alert('✅ Link Added Successfully!');
             setTitle('');
             setLink('');
-            fetchMaterials(); // Refresh list immediately
+            fetchMaterials(); 
         } catch (err) {
             alert('Upload failed: ' + (err.response?.data?.message || "Server Error"));
         }
     };
 
-    // --- ✏️ NEW: EDIT HANDLER ---
+    // --- EDIT HANDLER ---
     const handleEdit = async (id, currentTitle) => {
         const newTitle = window.prompt("Enter the new file name:", currentTitle);
-        if (!newTitle || newTitle === currentTitle) return; // Cancelled or same name
+        if (!newTitle || newTitle === currentTitle) return; 
 
         try {
             await axios.put(`https://study-marrow-api.onrender.com/api/materials/${id}`, 
                 { title: newTitle }, 
                 { headers: { 'admin-key': adminKey } }
             );
-            fetchMaterials(); // Refresh list to show new name
+            fetchMaterials(); 
         } catch (err) {
             alert("❌ Update failed.");
         }
@@ -101,6 +109,11 @@ function AdminPanel() {
             });
             fetchMaterials();
         } catch (err) { alert("Error deleting"); }
+    };
+
+    // --- HELPER: Filter materials for display ---
+    const getFiles = (cat, sub) => {
+        return materials.filter(m => m.category === cat && (sub ? m.subject === sub : true));
     };
 
     // --- LOGIN SCREEN ---
@@ -126,7 +139,7 @@ function AdminPanel() {
 
     // --- DASHBOARD ---
     return (
-        <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto', fontFamily: 'sans-serif' }}>
+        <div style={{ padding: '2rem', maxWidth: '900px', margin: '0 auto', fontFamily: 'sans-serif' }}>
             <h1 style={{ textAlign: 'center', color: '#333' }}>⚡ Admin Command Center</h1>
 
             {/* UPLOAD FORM */}
@@ -214,34 +227,87 @@ function AdminPanel() {
                 </div>
             </div>
             
-            {/* RECENT UPLOADS with EDIT BUTTON */}
+            {/* --- 📁 ORGANIZED LIBRARY VIEW --- */}
             <div>
-                <h3>Recent Uploads</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {materials.slice(0, 15).map(f => (
-                        <div key={f._id} style={listItemStyle}>
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <strong style={{ color: '#333' }}>{f.title}</strong> 
-                                <span style={{ fontSize: '0.8rem', color: '#666' }}>
-                                    {f.category} • {f.subject} • {f.resourceType}
-                                </span>
-                            </div>
-                            <div style={{ display: 'flex', gap: '10px' }}>
-                                <button onClick={() => handleEdit(f._id, f.title)} style={editButtonStyle}>Edit</button>
-                                <button onClick={() => handleDelete(f._id)} style={deleteButtonStyle}>Delete</button>
+                <h2 style={{borderBottom: '2px solid #333', paddingBottom: '10px', marginBottom: '20px'}}>
+                    📚 Manage Library Files
+                </h2>
+
+                {/* --- 1. CLASS 12 SECTION --- */}
+                <div style={sectionStyle}>
+                    <h3 style={headerStyle}>Class 12 Materials</h3>
+                    {structure['Class 12 Materials'].map(sub => (
+                        <div key={sub} style={{marginBottom: '20px', paddingLeft: '15px', borderLeft: '3px solid #bfdbfe'}}>
+                            <h4 style={{margin: '10px 0', color: '#2563eb'}}>{sub}</h4>
+                            <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                                {getFiles('Class 12 Materials', sub).length === 0 ? <small style={{color:'#999'}}>Empty</small> : 
+                                 getFiles('Class 12 Materials', sub).map(f => (
+                                    <div key={f._id} style={miniItemStyle}>
+                                        <span>{f.title} <small style={{color:'#666'}}>({f.resourceType})</small></span>
+                                        <div style={{display:'flex', gap:'5px'}}>
+                                            <button onClick={() => handleEdit(f._id, f.title)} style={miniEditBtn}>✎</button>
+                                            <button onClick={() => handleDelete(f._id)} style={miniDeleteBtn}>🗑</button>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     ))}
                 </div>
+
+                {/* --- 2. CLASS 10 SECTION --- */}
+                <div style={sectionStyle}>
+                    <h3 style={headerStyle}>Class 10 Materials</h3>
+                    {structure['Class 10 Materials'].map(sub => (
+                        <div key={sub} style={{marginBottom: '20px', paddingLeft: '15px', borderLeft: '3px solid #bbf7d0'}}>
+                            <h4 style={{margin: '10px 0', color: '#16a34a'}}>{sub}</h4>
+                            <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                                {getFiles('Class 10 Materials', sub).length === 0 ? <small style={{color:'#999'}}>Empty</small> : 
+                                 getFiles('Class 10 Materials', sub).map(f => (
+                                    <div key={f._id} style={miniItemStyle}>
+                                        <span>{f.title} <small style={{color:'#666'}}>({f.resourceType})</small></span>
+                                        <div style={{display:'flex', gap:'5px'}}>
+                                            <button onClick={() => handleEdit(f._id, f.title)} style={miniEditBtn}>✎</button>
+                                            <button onClick={() => handleDelete(f._id)} style={miniDeleteBtn}>🗑</button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* --- 3. CURRENT AFFAIRS SECTION --- */}
+                <div style={sectionStyle}>
+                    <h3 style={headerStyle}>Current Affairs</h3>
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                        {getFiles('Current Affairs').length === 0 ? <small style={{color:'#999'}}>Empty</small> : 
+                            getFiles('Current Affairs').map(f => (
+                            <div key={f._id} style={miniItemStyle}>
+                                <span>{f.title}</span>
+                                <div style={{display:'flex', gap:'5px'}}>
+                                    <button onClick={() => handleEdit(f._id, f.title)} style={miniEditBtn}>✎</button>
+                                    <button onClick={() => handleDelete(f._id)} style={miniDeleteBtn}>🗑</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
             </div>
         </div>
     );
 }
 
+// STYLES
 const inputStyle = { padding: '12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '1rem' };
 const buttonStyle = { padding: '12px', borderRadius: '6px', border: 'none', background: '#2563eb', color: 'white', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem' };
-const listItemStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', background: 'white', border: '1px solid #eee', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' };
-const deleteButtonStyle = { background: '#fee2e2', color: '#ef4444', border: 'none', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' };
-const editButtonStyle = { background: '#fef08a', color: '#854d0e', border: 'none', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' };
+
+const sectionStyle = { background: 'white', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '30px' };
+const headerStyle = { marginTop: 0, borderBottom: '1px solid #eee', paddingBottom: '10px', color: '#444' };
+const miniItemStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', background: '#f8f9fa', borderRadius: '5px', fontSize: '0.9rem' };
+
+const miniEditBtn = { background: '#fef08a', border: 'none', cursor: 'pointer', padding: '5px 10px', borderRadius: '4px' };
+const miniDeleteBtn = { background: '#fee2e2', border: 'none', cursor: 'pointer', padding: '5px 10px', borderRadius: '4px' };
 
 export default AdminPanel;
