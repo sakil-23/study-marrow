@@ -17,7 +17,7 @@ app.use(cors({
         "https://studymarrow.com",
         "https://www.studymarrow.com"
     ],
-    methods: ["GET", "POST", "DELETE", "PUT"], // ✅ ADDED "PUT" HERE
+    methods: ["GET", "POST", "DELETE", "PUT"],
     credentials: true
 }));
 
@@ -74,10 +74,15 @@ app.post('/api/verify-admin', verifyAdmin, (req, res) => {
     res.json({ success: true, message: "Welcome Admin!" });
 });
 
+// 4. ✅ UPLOAD MATERIAL (UPDATED with Board)
 app.post('/api/upload', verifyAdmin, async (req, res) => {
     try {
-        const { title, category, subject, resourceType, link } = req.body;
-        const newMaterial = new Material({ title, category, subject, resourceType, link });
+        // We now extract 'board' from the request
+        const { title, category, subject, resourceType, link, board } = req.body;
+        
+        // And we save 'board' to the database
+        const newMaterial = new Material({ title, category, subject, resourceType, link, board });
+        
         await newMaterial.save();
         res.status(201).json(newMaterial);
     } catch (err) {
@@ -85,7 +90,7 @@ app.post('/api/upload', verifyAdmin, async (req, res) => {
     }
 });
 
-// ✅ NEW ROUTE: RENAME MATERIAL
+// 5. ✅ RENAME MATERIAL
 app.put('/api/materials/:id', verifyAdmin, async (req, res) => {
     try {
         const { title } = req.body;
