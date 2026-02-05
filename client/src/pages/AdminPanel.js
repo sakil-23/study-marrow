@@ -14,6 +14,9 @@ function AdminPanel() {
     const [subject, setSubject] = useState('');
     const [resourceType, setResourceType] = useState('');
     
+    // ✅ 1. NEW STATE FOR BOARD
+    const [board, setBoard] = useState(''); 
+
     const [materials, setMaterials] = useState([]); 
     const [subscribers, setSubscribers] = useState([]);
 
@@ -21,7 +24,7 @@ function AdminPanel() {
     const structure = {
         'Class 12 Materials': ['Physics', 'Chemistry', 'Maths', 'Biology'],
         'Class 10 Materials': ['English', 'Mathematics', 'General Science', 'Social Science', 'Information Technology'],
-        'Current Affairs': [] // No subjects for this one
+        'Current Affairs': [] 
     };
 
     // --- LOGIN HANDLER ---
@@ -69,7 +72,14 @@ function AdminPanel() {
             return alert("Please select both a Subject and a Resource Type!");
         }
 
-        const materialData = { title, category, subject, resourceType, link };
+        // ✅ 2. VALIDATION: FORCE BOARD SELECTION
+        // If it is a Previous Year Paper, you MUST select CBSE or ASSEB
+        if (resourceType === 'Previous Year Papers' && !board) {
+            return alert("⚠️ Please select a Board (CBSE or ASSEB)!");
+        }
+
+        // ✅ 3. INCLUDE BOARD IN DATA
+        const materialData = { title, category, subject, resourceType, link, board };
 
         try {
             await axios.post('https://study-marrow-api.onrender.com/api/upload', materialData, {
@@ -78,6 +88,7 @@ function AdminPanel() {
             alert('✅ Link Added Successfully!');
             setTitle('');
             setLink('');
+            setBoard(''); // Reset board selection
             fetchMaterials(); 
         } catch (err) {
             alert('Upload failed: ' + (err.response?.data?.message || "Server Error"));
@@ -150,53 +161,58 @@ function AdminPanel() {
                     <input type="text" placeholder="File Title (e.g. Real Numbers Notes)" value={title} onChange={(e) => setTitle(e.target.value)} required style={inputStyle} />
                     
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                        <select value={category} onChange={(e) => { setCategory(e.target.value); setSubject(''); setResourceType(''); }} style={inputStyle}>
+                        <select value={category} onChange={(e) => { setCategory(e.target.value); setSubject(''); setResourceType(''); setBoard(''); }} style={inputStyle}>
                             <option>Class 12 Materials</option>
                             <option>Class 10 Materials</option>
                             <option>Current Affairs</option>
                         </select>
 
-                        {category === 'Class 12 Materials' && (
+                        {category.includes('Class') && (
                             <select value={subject} onChange={(e) => setSubject(e.target.value)} style={inputStyle}>
                                 <option value="">-- Select Subject --</option>
-                                <option>Physics</option>
-                                <option>Chemistry</option>
-                                <option>Maths</option>
-                                <option>Biology</option>
-                            </select>
-                        )}
-                        {category === 'Class 10 Materials' && (
-                            <select value={subject} onChange={(e) => setSubject(e.target.value)} style={inputStyle}>
-                                <option value="">-- Select Subject --</option>
-                                <option>English</option>
-                                <option>Mathematics</option>
-                                <option>General Science</option>
-                                <option>Social Science</option>
-                                <option>Information Technology</option>
+                                {structure[category].map(sub => <option key={sub} value={sub}>{sub}</option>)}
                             </select>
                         )}
                     </div>
 
-                    {category === 'Class 12 Materials' && (
-                        <select value={resourceType} onChange={(e) => setResourceType(e.target.value)} style={inputStyle}>
-                            <option value="">-- Select Type --</option>
-                            <option>NCERT Book</option>
-                            <option>NCERT Solutions</option>
-                            <option>Handwritten Notes</option>
-                            <option>Previous Year Papers</option>
-                            <option>Question Bank</option>
-                        </select>
-                    )}
-                    {category === 'Class 10 Materials' && (
-                        <select value={resourceType} onChange={(e) => setResourceType(e.target.value)} style={inputStyle}>
-                            <option value="">-- Select Type --</option>
-                            <option>NCERT Book</option>
-                            <option>NCERT solutions</option>
-                            <option>Notes</option>
-                            <option>Syllabus</option>
-                            <option>Previous Year Paper</option>
-                            <option>Question Bank</option>
-                        </select>
+                    {category.includes('Class') && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                            <select value={resourceType} onChange={(e) => { setResourceType(e.target.value); setBoard(''); }} style={inputStyle}>
+                                <option value="">-- Select Type --</option>
+                                {category === 'Class 12 Materials' ? (
+                                    <>
+                                        <option>NCERT Book</option>
+                                        <option>NCERT Solutions</option>
+                                        <option>Handwritten Notes</option>
+                                        <option>Previous Year Papers</option>
+                                        <option>Question Bank</option>
+                                    </>
+                                ) : (
+                                    <>
+                                        <option>NCERT Book</option>
+                                        <option>NCERT solutions</option>
+                                        <option>Notes</option>
+                                        <option>Syllabus</option>
+                                        <option>Previous Year Paper</option>
+                                        <option>Question Bank</option>
+                                    </>
+                                )}
+                            </select>
+
+                            {/* ✅ 4. NEW: BOARD SELECTOR (Only appears for Previous Year Papers) */}
+                            {(resourceType === 'Previous Year Papers' || resourceType === 'Previous Year Paper') && (
+                                <select 
+                                    value={board} 
+                                    onChange={(e) => setBoard(e.target.value)} 
+                                    required 
+                                    style={{ ...inputStyle, borderColor: '#16a34a', borderWidth: '2px', backgroundColor: '#f0fdf4' }}
+                                >
+                                    <option value="">-- Select Board --</option>
+                                    <option value="CBSE">CBSE</option>
+                                    <option value="ASSEB">ASSEB</option>
+                                </select>
+                            )}
+                        </div>
                     )}
 
                     <input type="url" placeholder="Paste PDF/Drive Link here (https://...)" value={link} onChange={(e) => setLink(e.target.value)} required style={{ ...inputStyle, borderColor: '#2563eb', background: '#eff6ff' }} />
@@ -243,7 +259,12 @@ function AdminPanel() {
                                 {getFiles('Class 12 Materials', sub).length === 0 ? <small style={{color:'#999'}}>Empty</small> : 
                                  getFiles('Class 12 Materials', sub).map(f => (
                                     <div key={f._id} style={miniItemStyle}>
-                                        <span>{f.title} <small style={{color:'#666'}}>({f.resourceType})</small></span>
+                                        <span>
+                                            {f.title} 
+                                            <small style={{color:'#666', marginLeft:'5px'}}>
+                                                ({f.resourceType} {f.board ? ` - ${f.board}` : ''})
+                                            </small>
+                                        </span>
                                         <div style={{display:'flex', gap:'5px'}}>
                                             <button onClick={() => handleEdit(f._id, f.title)} style={miniEditBtn}>✎</button>
                                             <button onClick={() => handleDelete(f._id)} style={miniDeleteBtn}>🗑</button>
@@ -265,7 +286,12 @@ function AdminPanel() {
                                 {getFiles('Class 10 Materials', sub).length === 0 ? <small style={{color:'#999'}}>Empty</small> : 
                                  getFiles('Class 10 Materials', sub).map(f => (
                                     <div key={f._id} style={miniItemStyle}>
-                                        <span>{f.title} <small style={{color:'#666'}}>({f.resourceType})</small></span>
+                                        <span>
+                                            {f.title} 
+                                            <small style={{color:'#666', marginLeft:'5px'}}>
+                                                ({f.resourceType} {f.board ? ` - ${f.board}` : ''})
+                                            </small>
+                                        </span>
                                         <div style={{display:'flex', gap:'5px'}}>
                                             <button onClick={() => handleEdit(f._id, f.title)} style={miniEditBtn}>✎</button>
                                             <button onClick={() => handleDelete(f._id)} style={miniDeleteBtn}>🗑</button>
@@ -300,9 +326,8 @@ function AdminPanel() {
 }
 
 // STYLES
-const inputStyle = { padding: '12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '1rem' };
+const inputStyle = { padding: '12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '1rem', width: '100%', boxSizing: 'border-box' };
 const buttonStyle = { padding: '12px', borderRadius: '6px', border: 'none', background: '#2563eb', color: 'white', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem' };
-
 const sectionStyle = { background: 'white', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '30px' };
 const headerStyle = { marginTop: 0, borderBottom: '1px solid #eee', paddingBottom: '10px', color: '#444' };
 const miniItemStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', background: '#f8f9fa', borderRadius: '5px', fontSize: '0.9rem' };
