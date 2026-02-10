@@ -73,7 +73,6 @@ function AdminPanel() {
         }
 
         // ✅ 2. VALIDATION: FORCE BOARD SELECTION
-        // If it is a Previous Year Paper, you MUST select CBSE or ASSEB
         if (resourceType === 'Previous Year Papers' && !board) {
             return alert("⚠️ Please select a Board (CBSE or ASSEB)!");
         }
@@ -121,6 +120,57 @@ function AdminPanel() {
             fetchMaterials();
         } catch (err) { alert("Error deleting"); }
     };
+
+    // ✅ NEW: REORDER LOGIC (Move Up / Down)
+    const handleMove = async (fileToMove, direction, allFilesConfig) => {
+        // 1. Get the current visible list for this folder
+        const currentList = materials.filter(m => 
+            m.category === allFilesConfig.cat && 
+            (!allFilesConfig.sub || m.subject === allFilesConfig.sub)
+        );
+
+        // 2. Find index of clicked item
+        const index = currentList.findIndex(m => m._id === fileToMove._id);
+        if (index === -1) return;
+
+        // 3. Swap in local array
+        const newIndex = index + direction;
+        if (newIndex < 0 || newIndex >= currentList.length) return; // Can't move past edges
+
+        // Swap the items
+        const temp = currentList[index];
+        currentList[index] = currentList[newIndex];
+        currentList[newIndex] = temp;
+
+        // 4. Send NEW ORDER to Server
+        // We assign order 0, 1, 2... based on current list position
+        const updates = currentList.map((item, idx) => ({
+            id: item._id,
+            order: idx
+        }));
+
+        try {
+            // Optimistic UI Update (Fast)
+            setMaterials(prev => {
+                const updated = [...prev];
+                updates.forEach(u => {
+                   const found = updated.find(m => m._id === u.id);
+                   if (found) found.order = u.order;
+                });
+                return updated.sort((a, b) => a.order - b.order); // Re-sort locally
+            });
+
+            // Server Update (Background)
+            await axios.put('https://study-marrow-api.onrender.com/api/materials/reorder', 
+                { updates }, 
+                { headers: { 'admin-key': adminKey } }
+            );
+        } catch (err) {
+            alert("❌ Reorder failed");
+            fetchMaterials(); // Revert on error
+        }
+    };
+
 
     // --- HELPER: Filter materials for display ---
     const getFiles = (cat, sub) => {
@@ -199,7 +249,7 @@ function AdminPanel() {
                                 )}
                             </select>
 
-                            {/* ✅ 4. NEW: BOARD SELECTOR (Only appears for Previous Year Papers) */}
+                            {/* ✅ 4. BOARD SELECTOR (Only appears for Previous Year Papers) */}
                             {(resourceType === 'Previous Year Papers' || resourceType === 'Previous Year Paper') && (
                                 <select 
                                     value={board} 
@@ -257,7 +307,7 @@ function AdminPanel() {
                             <h4 style={{margin: '10px 0', color: '#2563eb'}}>{sub}</h4>
                             <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
                                 {getFiles('Class 12 Materials', sub).length === 0 ? <small style={{color:'#999'}}>Empty</small> : 
-                                 getFiles('Class 12 Materials', sub).map(f => (
+                                 getFiles('Class 12 Materials', sub).map((f, idx, arr) => (
                                     <div key={f._id} style={miniItemStyle}>
                                         <span>
                                             {f.title} 
@@ -265,7 +315,25 @@ function AdminPanel() {
                                                 ({f.resourceType} {f.board ? ` - ${f.board}` : ''})
                                             </small>
                                         </span>
-                                        <div style={{display:'flex', gap:'5px'}}>
+                                        <div style={{display:'flex', gap:'5px', alignItems:'center'}}>
+                                            {/* ⬆️ UP ARROW */}
+                                            <button 
+                                                onClick={() => handleMove(f, -1, {cat: 'Class 12 Materials', sub})} 
+                                                style={{...arrowBtn, opacity: idx === 0 ? 0.3 : 1}}
+                                                disabled={idx === 0}
+                                            >
+                                                ⬆️
+                                            </button>
+                                            
+                                            {/* ⬇️ DOWN ARROW */}
+                                            <button 
+                                                onClick={() => handleMove(f, 1, {cat: 'Class 12 Materials', sub})} 
+                                                style={{...arrowBtn, opacity: idx === arr.length - 1 ? 0.3 : 1}}
+                                                disabled={idx === arr.length - 1}
+                                            >
+                                                ⬇️
+                                            </button>
+
                                             <button onClick={() => handleEdit(f._id, f.title)} style={miniEditBtn}>✎</button>
                                             <button onClick={() => handleDelete(f._id)} style={miniDeleteBtn}>🗑</button>
                                         </div>
@@ -284,7 +352,7 @@ function AdminPanel() {
                             <h4 style={{margin: '10px 0', color: '#16a34a'}}>{sub}</h4>
                             <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
                                 {getFiles('Class 10 Materials', sub).length === 0 ? <small style={{color:'#999'}}>Empty</small> : 
-                                 getFiles('Class 10 Materials', sub).map(f => (
+                                 getFiles('Class 10 Materials', sub).map((f, idx, arr) => (
                                     <div key={f._id} style={miniItemStyle}>
                                         <span>
                                             {f.title} 
@@ -292,7 +360,25 @@ function AdminPanel() {
                                                 ({f.resourceType} {f.board ? ` - ${f.board}` : ''})
                                             </small>
                                         </span>
-                                        <div style={{display:'flex', gap:'5px'}}>
+                                        <div style={{display:'flex', gap:'5px', alignItems:'center'}}>
+                                            {/* ⬆️ UP ARROW */}
+                                            <button 
+                                                onClick={() => handleMove(f, -1, {cat: 'Class 10 Materials', sub})} 
+                                                style={{...arrowBtn, opacity: idx === 0 ? 0.3 : 1}}
+                                                disabled={idx === 0}
+                                            >
+                                                ⬆️
+                                            </button>
+                                            
+                                            {/* ⬇️ DOWN ARROW */}
+                                            <button 
+                                                onClick={() => handleMove(f, 1, {cat: 'Class 10 Materials', sub})} 
+                                                style={{...arrowBtn, opacity: idx === arr.length - 1 ? 0.3 : 1}}
+                                                disabled={idx === arr.length - 1}
+                                            >
+                                                ⬇️
+                                            </button>
+
                                             <button onClick={() => handleEdit(f._id, f.title)} style={miniEditBtn}>✎</button>
                                             <button onClick={() => handleDelete(f._id)} style={miniDeleteBtn}>🗑</button>
                                         </div>
@@ -308,10 +394,27 @@ function AdminPanel() {
                     <h3 style={headerStyle}>Current Affairs</h3>
                     <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
                         {getFiles('Current Affairs').length === 0 ? <small style={{color:'#999'}}>Empty</small> : 
-                            getFiles('Current Affairs').map(f => (
+                            getFiles('Current Affairs').map((f, idx, arr) => (
                             <div key={f._id} style={miniItemStyle}>
                                 <span>{f.title}</span>
-                                <div style={{display:'flex', gap:'5px'}}>
+                                <div style={{display:'flex', gap:'5px', alignItems:'center'}}>
+                                    {/* ⬆️ UP ARROW */}
+                                    <button 
+                                        onClick={() => handleMove(f, -1, {cat: 'Current Affairs', sub: null})} 
+                                        style={{...arrowBtn, opacity: idx === 0 ? 0.3 : 1}}
+                                        disabled={idx === 0}
+                                    >
+                                        ⬆️
+                                    </button>
+                                    
+                                    {/* ⬇️ DOWN ARROW */}
+                                    <button 
+                                        onClick={() => handleMove(f, 1, {cat: 'Current Affairs', sub: null})} 
+                                        style={{...arrowBtn, opacity: idx === arr.length - 1 ? 0.3 : 1}}
+                                        disabled={idx === arr.length - 1}
+                                    >
+                                        ⬇️
+                                    </button>
                                     <button onClick={() => handleEdit(f._id, f.title)} style={miniEditBtn}>✎</button>
                                     <button onClick={() => handleDelete(f._id)} style={miniDeleteBtn}>🗑</button>
                                 </div>
@@ -334,5 +437,6 @@ const miniItemStyle = { display: 'flex', justifyContent: 'space-between', alignI
 
 const miniEditBtn = { background: '#fef08a', border: 'none', cursor: 'pointer', padding: '5px 10px', borderRadius: '4px' };
 const miniDeleteBtn = { background: '#fee2e2', border: 'none', cursor: 'pointer', padding: '5px 10px', borderRadius: '4px' };
+const arrowBtn = { background: 'transparent', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer', padding: '2px 6px', marginRight: '5px' };
 
 export default AdminPanel;
