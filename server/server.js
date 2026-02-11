@@ -80,14 +80,23 @@ app.post('/api/subscribe', async (req, res) => {
 
 app.post('/api/verify-admin', verifyAdmin, (req, res) => res.json({ success: true }));
 
-// ✅ UPDATED UPLOAD: Adds 'order: 9999' so new files go to the bottom by default
+
+// 4. ✅ UPLOAD MATERIAL (UPDATED: AUTO-TOP)
 app.post('/api/upload', verifyAdmin, async (req, res) => {
     try {
         const { title, category, subject, resourceType, link, board } = req.body;
         
+        // 1. Find the current item with the Lowest order number (The Top Item)
+        // We look specifically in the same Category and Subject
+        const topItem = await Material.findOne({ category, subject }).sort({ order: 1 });
+        
+        // 2. Calculate new order: One step higher than the top item
+        // If topItem is order 10, new is 9. If top is 0, new is -1.
+        const newOrder = topItem ? topItem.order - 1 : 0;
+
         const newMaterial = new Material({ 
             title, category, subject, resourceType, link, board,
-            order: 9999 // New files start at the end
+            order: newOrder // ✅ Places it at the very top
         });
         
         await newMaterial.save();
