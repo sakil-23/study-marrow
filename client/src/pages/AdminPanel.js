@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 
 function AdminPanel() {
-    // --- STATE ---
+    // --- LOGIN STATE ---
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [passwordInput, setPasswordInput] = useState('');
     const [adminKey, setAdminKey] = useState('');
@@ -37,9 +37,7 @@ function AdminPanel() {
             categories: ['Weekly Current Affairs', 'Monthly Current Affairs', 'Specific Event Current Affairs']
         },
         'Job Exam Preparation': {
-            categories: ['Under Progress'],
-            subjects: { 'Under Progress': ['Coming Soon'] },
-            types: ['Coming Soon']
+            categories: ['Under Progress']
         }
     };
 
@@ -198,7 +196,6 @@ function AdminPanel() {
                         onChange={(e) => { setVertical(e.target.value); setCategory(''); setSubject(''); setResourceType(''); setBoard(''); }} 
                         style={{...inputStyle, background: '#eff6ff', fontWeight: 'bold', borderColor: '#bfdbfe'}}
                     >
-                        <option value="">-- Select Mega-Category --</option>
                         {Object.keys(portalData).map(v => <option key={v} value={v}>{v}</option>)}
                     </select>
 
@@ -245,7 +242,7 @@ function AdminPanel() {
                 </form>
             </div>
 
-            {/* SUBSCRIBER LIST */}
+            {/* ✅ SUBSCRIBER LIST (RESTORED!) */}
             <div style={{ background: '#fff', padding: '20px', borderRadius: '10px', border: '1px solid #ddd', marginBottom: '30px' }}>
                 <h3 style={{ marginTop: 0, color: '#16a34a', borderBottom: '2px solid #16a34a', paddingBottom: '10px' }}>
                     📬 Subscriber List ({subscribers.length})
