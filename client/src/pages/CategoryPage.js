@@ -18,7 +18,7 @@ function CategoryPage() {
   const isClass9  = categoryName.includes('Class 9');
   const isClass8  = categoryName.includes('Class 8');
   
-  // ✅ NEW: Detect Current Affairs
+  // Detect Current Affairs
   const isCurrentAffairs = categoryName.includes('Current Affairs');
 
   // Only School categories are "Deep Folders" (require subject & type selection)
@@ -146,9 +146,6 @@ function CategoryPage() {
       )}
 
       {/* --- 3. FILES / BOARD SELECTION --- */}
-      {/* Notice the magic here: `!isDeepFolder` is true for Current Affairs.
-          So this section renders immediately without needing a Subject or Type! 
-      */}
       {(selectedType || !isDeepFolder) && (
         <div>
            {/* Only show "Back to folders" if we are actually inside a deep folder */}
