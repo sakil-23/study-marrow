@@ -1,14 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
 function Home() {
+  const location = useLocation();
   const [search, setSearch] = useState('');
   const [email, setEmail] = useState('');
   const [materials, setMaterials] = useState([]);
 
-  // ✅ NEW: Tracks which Mega-Category the user has clicked
-  const [selectedVertical, setSelectedVertical] = useState(null);
+  // ✅ SMART NAVIGATION: Checks if we came back from a specific vertical
+  const [selectedVertical, setSelectedVertical] = useState(location.state?.selectedVertical || null);
+
+  // Update selectedVertical if location.state changes (e.g. hitting back button)
+  useEffect(() => {
+    if (location.state?.selectedVertical) {
+      setSelectedVertical(location.state.selectedVertical);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     axios.get('https://study-marrow-api.onrender.com/api/materials')

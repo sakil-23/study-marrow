@@ -9,26 +9,33 @@ function CategoryPage() {
   // --- NAVIGATION STATE ---
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [selectedType, setSelectedType] = useState(null);
-  const [selectedBoard, setSelectedBoard] = useState(null); // ✅ NEW: Tracks CBSE/ASSEB
+  const [selectedBoard, setSelectedBoard] = useState(null); 
 
-  // --- SMART LOGIC ---
+  // --- SMART LOGIC FOR CLASSES ---
   const isClass12 = categoryName.includes('Class 12');
+  const isClass11 = categoryName.includes('Class 11');
   const isClass10 = categoryName.includes('Class 10');
-  const isDeepFolder = isClass12 || isClass10;
+  const isClass9  = categoryName.includes('Class 9');
+  const isClass8  = categoryName.includes('Class 8');
 
-  // --- DEFINE DATA FOR BOTH CLASSES ---
+  const isDeepFolder = isClass12 || isClass11 || isClass10 || isClass9 || isClass8;
+
+  // --- DEFINE DATA DYNAMICALLY ---
   let subjects = [];
   let types = [];
 
-  if (isClass12) {
+  if (isClass12 || isClass11) {
       subjects = ['Physics', 'Chemistry', 'Biology', 'Maths'];
       types = ['NCERT Book', 'NCERT Solutions', 'Handwritten Notes', 'Previous Year Papers', 'Question Bank'];
   } else if (isClass10) {
       subjects = ['English', 'Mathematics', 'General Science', 'Social Science', 'Information Technology'];
       types = ['NCERT Book', 'NCERT solutions', 'Notes', 'Syllabus', 'Previous Year Paper', 'Question Bank'];
+  } else if (isClass9 || isClass8) {
+      subjects = ['English', 'Mathematics', 'General Science', 'Social Science', 'Information Technology'];
+      types = ['NCERT Book', 'NCERT solutions', 'Notes', 'Question Bank'];
   }
 
-  // ✅ HELPER: Check if current folder is for Papers
+  // ✅ HELPER: Check if current folder is for Papers (handles both naming conventions)
   const isPapersFolder = selectedType === 'Previous Year Papers' || selectedType === 'Previous Year Paper';
 
   useEffect(() => {
@@ -37,39 +44,34 @@ function CategoryPage() {
     setSelectedType(null);
     setSelectedBoard(null);
 
-    console.log("Category Page Loaded: " + categoryName);
-
     axios.get('https://study-marrow-api.onrender.com/api/materials')
       .then(res => {
-        const filtered = res.data.filter(item => {
-            if (item.category === categoryName) return true;
-            if (isClass12 && item.category === 'Class 12 Materials') return true;
-            if (isClass10 && item.category === 'Class 10 Materials') return true;
-            return false;
-        });
-        setMaterials(filtered);
+        // Filter out only the files that match the exact category (e.g. "Class 12 Materials")
+        const filtered = res.data.filter(item => item.category === categoryName);
+        // Sort them by the custom 'order' we set in the Admin Panel
+        setMaterials(filtered.sort((a, b) => a.order - b.order));
       })
       .catch(err => console.log(err));
-  }, [categoryName, isClass12, isClass10]);
+  }, [categoryName]);
 
   // --- FINAL FILE FILTER ---
   const currentFiles = materials.filter(item => {
-    // 1. Filter by Subject
     if (selectedSubject && item.subject !== selectedSubject) return false;
-    // 2. Filter by Type
     if (selectedType && item.resourceType !== selectedType) return false;
-    // 3. ✅ Filter by Board (Only if we are in Papers folder and a board is selected)
     if (isPapersFolder && selectedBoard && item.board !== selectedBoard) return false;
-    
     return true;
   });
 
   return (
     <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', minHeight: '80vh' }}>
       
-      {/* --- BREADCRUMBS --- */}
+      {/* --- ✅ NEW BREADCRUMBS: Smooth return to School Academics --- */}
       <div style={{ marginBottom: '20px', color: '#64748b' }}>
         <Link to="/" style={{ textDecoration: 'none', color: '#3b82f6' }}>Home</Link> 
+        {' > '} 
+        <Link to="/" state={{ selectedVertical: 'School Academics' }} style={{ textDecoration: 'none', color: '#3b82f6' }}>
+            School Academics
+        </Link>
         {' > '} 
         <span onClick={() => {setSelectedSubject(null); setSelectedType(null); setSelectedBoard(null)}} style={{ cursor: 'pointer', color: selectedSubject ? '#3b82f6' : 'black' }}>
           {categoryName}
@@ -139,8 +141,8 @@ function CategoryPage() {
            {/* Back Button Logic */}
            {isDeepFolder && (
              <button onClick={() => {
-                 if(selectedBoard) setSelectedBoard(null); // Go back to Board selection
-                 else setSelectedType(null); // Go back to Types
+                 if(selectedBoard) setSelectedBoard(null); 
+                 else setSelectedType(null); 
              }} style={backButtonStyle}>
                 {selectedBoard ? `← Back to ${selectedType}` : '← Back to Folders'}
              </button>
@@ -148,11 +150,9 @@ function CategoryPage() {
            
            <div style={{ marginTop: '20px' }}>
              
-             {/* ✅ NEW: BOARD SELECTION GRID (Only if Papers folder & No board selected) */}
+             {/* BOARD SELECTION GRID (Only if Papers folder & No board selected) */}
              {isPapersFolder && !selectedBoard ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
-                    
-                    {/* CBSE Card */}
                     <div onClick={() => setSelectedBoard('CBSE')} style={cardStyle}
                         onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
                         onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
@@ -161,7 +161,6 @@ function CategoryPage() {
                         <p style={{ color: '#64748b' }}>Central Board</p>
                     </div>
 
-                    {/* ASSEB Card */}
                     <div onClick={() => setSelectedBoard('ASSEB')} style={cardStyle}
                         onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
                         onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
@@ -171,7 +170,7 @@ function CategoryPage() {
                     </div>
                 </div>
              ) : (
-                /* ✅ STANDARD FILE LIST */
+                /* STANDARD FILE LIST */
                 <div style={{ display: 'grid', gap: '15px' }}>
                     {currentFiles.length === 0 ? (
                         <p style={{ color: '#666' }}>No files found here yet.</p>
