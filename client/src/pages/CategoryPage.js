@@ -11,14 +11,21 @@ function CategoryPage() {
   const [selectedType, setSelectedType] = useState(null);
   const [selectedBoard, setSelectedBoard] = useState(null); 
 
-  // --- SMART LOGIC FOR CLASSES ---
+  // --- SMART LOGIC FOR CLASSES & VERTICALS ---
   const isClass12 = categoryName.includes('Class 12');
   const isClass11 = categoryName.includes('Class 11');
   const isClass10 = categoryName.includes('Class 10');
   const isClass9  = categoryName.includes('Class 9');
   const isClass8  = categoryName.includes('Class 8');
+  
+  // ✅ NEW: Detect Current Affairs
+  const isCurrentAffairs = categoryName.includes('Current Affairs');
 
-  const isDeepFolder = isClass12 || isClass11 || isClass10 || isClass9 || isClass8;
+  // Only School categories are "Deep Folders" (require subject & type selection)
+  const isDeepFolder = !isCurrentAffairs;
+
+  // Determine parent vertical for breadcrumbs
+  const parentVertical = isCurrentAffairs ? 'Current Affairs' : 'School Academics';
 
   // --- DEFINE DATA DYNAMICALLY ---
   let subjects = [];
@@ -34,8 +41,8 @@ function CategoryPage() {
       subjects = ['English', 'Mathematics', 'General Science', 'Social Science', 'Information Technology'];
       types = ['NCERT Book', 'NCERT solutions', 'Notes', 'Question Bank'];
   }
+  // If it's Current Affairs, subjects and types stay empty!
 
-  // ✅ HELPER: Check if current folder is for Papers (handles both naming conventions)
   const isPapersFolder = selectedType === 'Previous Year Papers' || selectedType === 'Previous Year Paper';
 
   useEffect(() => {
@@ -46,9 +53,8 @@ function CategoryPage() {
 
     axios.get('https://study-marrow-api.onrender.com/api/materials')
       .then(res => {
-        // Filter out only the files that match the exact category (e.g. "Class 12 Materials")
+        // Works perfectly for both School and Current Affairs
         const filtered = res.data.filter(item => item.category === categoryName);
-        // Sort them by the custom 'order' we set in the Admin Panel
         setMaterials(filtered.sort((a, b) => a.order - b.order));
       })
       .catch(err => console.log(err));
@@ -56,6 +62,10 @@ function CategoryPage() {
 
   // --- FINAL FILE FILTER ---
   const currentFiles = materials.filter(item => {
+    // If it's Current Affairs, show everything in this category immediately
+    if (isCurrentAffairs) return true; 
+    
+    // Otherwise, apply School Academics filters
     if (selectedSubject && item.subject !== selectedSubject) return false;
     if (selectedType && item.resourceType !== selectedType) return false;
     if (isPapersFolder && selectedBoard && item.board !== selectedBoard) return false;
@@ -65,16 +75,16 @@ function CategoryPage() {
   return (
     <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', minHeight: '80vh' }}>
       
-      {/* --- ✅ NEW BREADCRUMBS: Smooth return to School Academics --- */}
+      {/* --- BREADCRUMBS --- */}
       <div style={{ marginBottom: '20px', color: '#64748b' }}>
         <Link to="/" style={{ textDecoration: 'none', color: '#3b82f6' }}>Home</Link> 
         {' > '} 
-        <Link to="/" state={{ selectedVertical: 'School Academics' }} style={{ textDecoration: 'none', color: '#3b82f6' }}>
-            School Academics
+        <Link to="/" state={{ selectedVertical: parentVertical }} style={{ textDecoration: 'none', color: '#3b82f6' }}>
+            {parentVertical}
         </Link>
         {' > '} 
         <span onClick={() => {setSelectedSubject(null); setSelectedType(null); setSelectedBoard(null)}} style={{ cursor: 'pointer', color: selectedSubject ? '#3b82f6' : 'black' }}>
-          {categoryName}
+          {categoryName.replace(' Materials', '')}
         </span>
         {selectedSubject && (
           <>
@@ -99,10 +109,10 @@ function CategoryPage() {
         {selectedBoard ? `${selectedSubject}: ${selectedBoard} Papers` :
          selectedType ? `${selectedSubject}: ${selectedType}` : 
          selectedSubject ? `${selectedSubject} Dashboard` : 
-         categoryName}
+         categoryName.replace(' Materials', '')}
       </h1>
 
-      {/* --- 1. SUBJECTS GRID --- */}
+      {/* --- 1. SUBJECTS GRID (Only renders if it's a Deep Folder) --- */}
       {!selectedSubject && isDeepFolder && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
           {subjects.map((sub) => (
@@ -117,8 +127,8 @@ function CategoryPage() {
         </div>
       )}
 
-      {/* --- 2. TYPES GRID --- */}
-      {selectedSubject && !selectedType && (
+      {/* --- 2. TYPES GRID (Only renders if it's a Deep Folder) --- */}
+      {selectedSubject && !selectedType && isDeepFolder && (
         <div>
           <button onClick={() => setSelectedSubject(null)} style={backButtonStyle}>← Back to Subjects</button>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginTop: '20px' }}>
@@ -135,10 +145,13 @@ function CategoryPage() {
         </div>
       )}
 
-      {/* --- 3. FILES (OR BOARD SELECTION) --- */}
+      {/* --- 3. FILES / BOARD SELECTION --- */}
+      {/* Notice the magic here: `!isDeepFolder` is true for Current Affairs.
+          So this section renders immediately without needing a Subject or Type! 
+      */}
       {(selectedType || !isDeepFolder) && (
         <div>
-           {/* Back Button Logic */}
+           {/* Only show "Back to folders" if we are actually inside a deep folder */}
            {isDeepFolder && (
              <button onClick={() => {
                  if(selectedBoard) setSelectedBoard(null); 
@@ -150,7 +163,7 @@ function CategoryPage() {
            
            <div style={{ marginTop: '20px' }}>
              
-             {/* BOARD SELECTION GRID (Only if Papers folder & No board selected) */}
+             {/* BOARD SELECTION GRID */}
              {isPapersFolder && !selectedBoard ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
                     <div onClick={() => setSelectedBoard('CBSE')} style={cardStyle}
@@ -177,15 +190,19 @@ function CategoryPage() {
                     ) : (
                         currentFiles.map((file) => (
                         <div key={file._id} style={fileCardStyle}>
-                            <div style={{ fontSize: '1.5rem' }}>📄</div>
+                            <div style={{ fontSize: '1.5rem' }}>{isCurrentAffairs ? '📰' : '📄'}</div>
                             <div style={{ flex: 1 }}>
                             <h4 style={{ margin: 0 }}>{file.title}</h4>
-                            <small style={{ color: '#64748b' }}>
-                                {file.subject || file.category}
-                                {file.board ? ` • ${file.board}` : ''}
-                            </small>
+                            
+                            {/* Hide sub-text for Current Affairs so it looks cleaner */}
+                            {!isCurrentAffairs && (
+                                <small style={{ color: '#64748b' }}>
+                                    {file.subject || file.category}
+                                    {file.board ? ` • ${file.board}` : ''}
+                                </small>
+                            )}
                             </div>
-                            <a href={file.link} target="_blank" rel="noreferrer" style={downloadButtonStyle}>Download</a>
+                            <a href={file.link} target="_blank" rel="noreferrer" style={downloadButtonStyle}>View / Download</a>
                         </div>
                         ))
                     )}
