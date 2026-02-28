@@ -8,7 +8,7 @@ function Home() {
   const [email, setEmail] = useState('');
   const [materials, setMaterials] = useState([]);
 
-  // ✅ SMART NAVIGATION
+  // SMART NAVIGATION
   const [selectedVertical, setSelectedVertical] = useState(location.state?.selectedVertical || null);
 
   useEffect(() => {
@@ -24,10 +24,10 @@ function Home() {
   }, []);
 
   const filteredMaterials = materials.filter(item => 
-    item.title.toLowerCase().includes(search.toLowerCase()) ||
-    item.subject?.toLowerCase().includes(search.toLowerCase()) ||
-    item.category?.toLowerCase().includes(search.toLowerCase()) ||
-    item.vertical?.toLowerCase().includes(search.toLowerCase())
+    (item.title && item.title.toLowerCase().includes(search.toLowerCase())) ||
+    (item.subject && item.subject.toLowerCase().includes(search.toLowerCase())) ||
+    (item.category && item.category.toLowerCase().includes(search.toLowerCase())) ||
+    (item.vertical && item.vertical.toLowerCase().includes(search.toLowerCase()))
   );
 
   const handleSubscribe = async (e) => {
@@ -37,7 +37,9 @@ function Home() {
       await axios.post('https://study-marrow-api.onrender.com/api/subscribe', { email });
       alert("🎉 You are now subscribed!");
       setEmail(''); 
-    } catch (err) { alert(err.response?.data?.message || "Something went wrong."); }
+    } catch (err) { 
+      alert(err.response?.data?.message || "Something went wrong."); 
+    }
   };
 
   return (
@@ -68,9 +70,9 @@ function Home() {
       {/* --- MAIN CONTENT --- */}
       <div className="container" style={{ flex: 1, padding: '3rem 1rem', maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
 
-        {/* 🔍 SEARCH RESULTS */}
+        {/* SEARCH RESULTS */}
         {search.length > 0 && (
-          <div style={{ marginBottom: '40px', animation: 'fadeIn 0.3s ease-in-out' }}>
+          <div style={{ marginBottom: '40px' }}>
             <h2 style={sectionTitleStyle}>Search Results for "{search}" ({filteredMaterials.length})</h2>
             {filteredMaterials.length === 0 ? (
               <p style={{ textAlign: 'center', color: '#64748b' }}>No materials found.</p>
@@ -96,11 +98,14 @@ function Home() {
           </div>
         )}
 
-        {/* --- 🏗️ MEGA-PORTAL NAVIGATION --- */}
+        {/* NAVIGATION */}
         {!search && (
             <>
                 {selectedVertical && (
-                    <button onClick={() => setSelectedVertical(null)} style={{ background: 'none', border: 'none', color: '#3b82f6', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem', padding: '0 0 20px 0', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <button 
+                      onClick={() => setSelectedVertical(null)} 
+                      style={{ background: 'none', border: 'none', color: '#3b82f6', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem', padding: '0 0 20px 0', display: 'flex', alignItems: 'center', gap: '5px' }}
+                    >
                         ← Back to Main Portal
                     </button>
                 )}
@@ -111,14 +116,13 @@ function Home() {
                         <h2 style={sectionTitleStyle}>Explore Categories</h2>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
                             
-                            <div onClick={() => setSelectedVertical('School Academics')} style={verticalCardStyle} className="hover-card">
+                            <div onClick={() => setSelectedVertical('School Academics')} style={verticalCardStyle}>
                                 <div style={{ fontSize: '4rem', marginBottom: '15px' }}>🏫</div>
                                 <h2 style={{ color: '#1e293b', margin: '0 0 10px 0' }}>School Academics</h2>
                                 <p style={{ color: '#64748b', margin: 0 }}>Class 8 to 12 materials, NCERT solutions, and Board Papers.</p>
                             </div>
 
-                            {/* ✅ NEW: Current Affairs unlocked! */}
-                            <div onClick={() => setSelectedVertical('Current Affairs')} style={verticalCardStyle} className="hover-card">
+                            <div onClick={() => setSelectedVertical('Current Affairs')} style={verticalCardStyle}>
                                 <div style={{ fontSize: '4rem', marginBottom: '15px' }}>🌍</div>
                                 <h2 style={{ color: '#1e293b', margin: '0 0 10px 0' }}>Current Affairs</h2>
                                 <p style={{ color: '#64748b', margin: 0 }}>Weekly, Monthly, and Specific event compilations.</p>
@@ -136,7 +140,123 @@ function Home() {
 
                 {/* LEVEL 2: INSIDE SCHOOL ACADEMICS */}
                 {selectedVertical === 'School Academics' && (
-                    <div className="fade-in">
+                    <div>
                         <h2 style={sectionTitleStyle}>🏫 School Academics</h2>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
-                            {['Class 12 Materials', 'Class 11 Materials', 'Class 10 Materials', 'Class 9 Materials', '
+                            {['Class 12 Materials', 'Class 11 Materials', 'Class 10 Materials', 'Class 9 Materials', 'Class 8 Materials'].map(cls => (
+                                <Link to={`/category/${cls}`} key={cls} style={{ textDecoration: 'none', color: 'inherit' }}>
+                                    <div style={subCategoryCardStyle}>
+                                        <div style={{ fontSize: '2rem', marginBottom: '10px' }}>📚</div>
+                                        <h3 style={{ margin: '0 0 5px 0' }}>{cls.replace(' Materials', '')}</h3>
+                                        <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>View all subjects</p>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* LEVEL 2: INSIDE CURRENT AFFAIRS */}
+                {selectedVertical === 'Current Affairs' && (
+                    <div>
+                        <h2 style={sectionTitleStyle}>🌍 Current Affairs</h2>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+                            {['Weekly Current Affairs', 'Monthly Current Affairs', 'Specific Event Current Affairs'].map(cat => (
+                                <Link to={`/category/${cat}`} key={cat} style={{ textDecoration: 'none', color: 'inherit' }}>
+                                    <div style={subCategoryCardStyle}>
+                                        <div style={{ fontSize: '2rem', marginBottom: '10px' }}>📰</div>
+                                        <h3 style={{ margin: '0 0 5px 0' }}>{cat.replace(' Current Affairs', '')}</h3>
+                                        <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>View all updates</p>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </>
+        )}
+      </div>
+
+      {/* --- FOOTER --- */}
+      <footer style={{ marginTop: 'auto', width: '100%', padding: '2rem 0', background: '#0f172a', borderTop: '1px solid #334155', textAlign: 'center' }}>
+        <div style={{ maxWidth: '600px', margin: '0 auto', padding: '0 20px' }}>
+          <h3 style={{ color: '#e2e8f0', fontSize: '1.2rem', marginBottom: '10px' }}>Stay Updated</h3>
+          <p style={{ color: '#94a3b8', marginBottom: '20px', fontSize: '0.9rem' }}>Get notified when new materials are uploaded.</p>
+
+          <form onSubmit={handleSubscribe} style={{ display: 'flex', justifyContent: 'center', gap: '10px', alignItems: 'center' }}>
+            <input 
+              type="email" 
+              placeholder="Your email..." 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)} 
+              style={{ padding: '10px 15px', borderRadius: '6px', border: '1px solid #475569', background: '#1e293b', color: 'white', width: '250px', fontSize: '0.9rem' }} 
+            />
+            <button type="submit" style={{ padding: '10px 20px', borderRadius: '6px', border: 'none', background: '#3b82f6', color: 'white', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold' }}>
+              Subscribe
+            </button>
+          </form>
+          <p style={{ marginTop: '30px', color: '#475569', fontSize: '0.8rem' }}>© 2026 Study Marrow. Built for Students.</p>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+const sectionTitleStyle = { 
+  borderLeft: '5px solid #3b82f6', 
+  paddingLeft: '15px', 
+  color: '#1e293b', 
+  marginBottom: '30px' 
+};
+const verticalCardStyle = { 
+  background: 'white', 
+  padding: '40px 30px', 
+  borderRadius: '20px', 
+  boxShadow: '0 4px 6px rgba(0,0,0,0.05)', 
+  border: '1px solid #e2e8f0', 
+  textAlign: 'center', 
+  cursor: 'pointer', 
+  position: 'relative' 
+};
+const subCategoryCardStyle = { 
+  background: 'white', 
+  padding: '25px', 
+  borderRadius: '15px', 
+  boxShadow: '0 2px 4px rgba(0,0,0,0.05)', 
+  border: '1px solid #e2e8f0', 
+  textAlign: 'center', 
+  cursor: 'pointer' 
+};
+const comingSoonBadge = { 
+  position: 'absolute', 
+  top: '20px', 
+  right: '20px', 
+  background: '#fef08a', 
+  color: '#854d0e', 
+  padding: '5px 10px', 
+  borderRadius: '20px', 
+  fontSize: '0.75rem', 
+  fontWeight: 'bold' 
+};
+const fileItemStyle = { 
+  display: 'flex', 
+  justifyContent: 'space-between', 
+  alignItems: 'center', 
+  padding: '15px 20px', 
+  background: 'white', 
+  border: '1px solid #e2e8f0', 
+  borderRadius: '10px', 
+  boxShadow: '0 2px 4px rgba(0,0,0,0.05)' 
+};
+const downloadBtnStyle = { 
+  padding: '8px 20px', 
+  background: '#eff6ff', 
+  color: '#2563eb', 
+  border: '1px solid #bfdbfe', 
+  borderRadius: '6px', 
+  textDecoration: 'none', 
+  fontWeight: 'bold', 
+  fontSize: '0.9rem' 
+};
+
+export default Home;
