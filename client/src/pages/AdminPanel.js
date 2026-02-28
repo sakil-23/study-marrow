@@ -8,23 +8,40 @@ function AdminPanel() {
     const [adminKey, setAdminKey] = useState('');
 
     // --- DATA STATE ---
+    const [vertical, setVertical] = useState('School Academics'); // ✅ NEW MEGA-CATEGORY
     const [link, setLink] = useState('');
     const [title, setTitle] = useState('');
-    const [category, setCategory] = useState('Class 12 Materials');
+    const [category, setCategory] = useState('');
     const [subject, setSubject] = useState('');
     const [resourceType, setResourceType] = useState('');
-    
-    // ✅ 1. NEW STATE FOR BOARD
     const [board, setBoard] = useState(''); 
 
     const [materials, setMaterials] = useState([]); 
     const [subscribers, setSubscribers] = useState([]);
 
-    // --- DEFINED STRUCTURE FOR VIEWING ---
-    const structure = {
-        'Class 12 Materials': ['Physics', 'Chemistry', 'Maths', 'Biology'],
-        'Class 10 Materials': ['English', 'Mathematics', 'General Science', 'Social Science', 'Information Technology'],
-        'Current Affairs': [] 
+    // --- 🏗️ THE MEGA-PORTAL STRUCTURE ---
+    const portalData = {
+        'School Academics': {
+            categories: ['Class 12 Materials', 'Class 11 Materials', 'Class 10 Materials', 'Class 9 Materials', 'Class 8 Materials'],
+            subjects: {
+                'Class 12 Materials': ['Physics', 'Chemistry', 'Maths', 'Biology'],
+                'Class 11 Materials': ['Physics', 'Chemistry', 'Maths', 'Biology'],
+                'Class 10 Materials': ['Mathematics', 'General Science', 'Social Science', 'English', 'Information Technology'],
+                'Class 9 Materials':  ['Mathematics', 'General Science', 'Social Science', 'English', 'Information Technology'],
+                'Class 8 Materials':  ['Mathematics', 'General Science', 'Social Science', 'English', 'Information Technology']
+            },
+            types: ['NCERT Book', 'NCERT Solutions', 'Notes', 'Syllabus', 'Previous Year Papers', 'Question Bank']
+        },
+        'Job Exam Preparation': {
+            categories: ['Under Progress'],
+            subjects: { 'Under Progress': ['Coming Soon'] },
+            types: ['Coming Soon']
+        },
+        'Current Affairs': {
+            categories: ['Under Progress'],
+            subjects: { 'Under Progress': ['Coming Soon'] },
+            types: ['Coming Soon']
+        }
     };
 
     // --- LOGIN HANDLER ---
@@ -37,29 +54,21 @@ function AdminPanel() {
             setAdminKey(passwordInput);
             setIsAuthenticated(true);
             fetchData(passwordInput);
-        } catch (err) {
-            alert("❌ Wrong Password! Access Denied.");
-        }
+        } catch (err) { alert("❌ Wrong Password! Access Denied."); }
     };
 
-    // --- DATA FETCHING ---
-    const fetchData = (key) => {
-        fetchMaterials();
-        fetchSubscribers(key);
-    };
-
+    const fetchData = (key) => { fetchMaterials(); fetchSubscribers(key); };
+    
     const fetchMaterials = async () => {
         try {
             const res = await axios.get('https://study-marrow-api.onrender.com/api/materials');
             setMaterials(res.data);
         } catch (err) { console.error(err); }
     };
-
+    
     const fetchSubscribers = async (key) => {
         try {
-            const res = await axios.get('https://study-marrow-api.onrender.com/api/subscribe', {
-                headers: { 'admin-key': key }
-            });
+            const res = await axios.get('https://study-marrow-api.onrender.com/api/subscribe', { headers: { 'admin-key': key } });
             setSubscribers(res.data);
         } catch (err) { console.error("Error fetching subscribers"); }
     };
@@ -68,113 +77,92 @@ function AdminPanel() {
     const handleUpload = async (e) => {
         e.preventDefault();
         
-        if ((category.includes('Class')) && (!subject || !resourceType)) {
-            return alert("Please select both a Subject and a Resource Type!");
+        if (!vertical || !category || !subject || !resourceType) {
+            return alert("Please fill all dropdowns!");
         }
 
-        // ✅ 2. VALIDATION: FORCE BOARD SELECTION
+        if (vertical !== 'School Academics') {
+            return alert("⚠️ This section is under progress. Please select School Academics.");
+        }
+
         if (resourceType === 'Previous Year Papers' && !board) {
             return alert("⚠️ Please select a Board (CBSE or ASSEB)!");
         }
 
-        // ✅ 3. INCLUDE BOARD IN DATA
-        const materialData = { title, category, subject, resourceType, link, board };
+        // Send 'vertical' to the server along with the rest
+        const materialData = { vertical, category, subject, resourceType, link, board, title };
 
         try {
             await axios.post('https://study-marrow-api.onrender.com/api/upload', materialData, {
                 headers: { 'admin-key': adminKey }
             });
             alert('✅ Link Added Successfully!');
-            setTitle('');
-            setLink('');
-            setBoard(''); // Reset board selection
+            setTitle(''); setLink(''); setBoard(''); 
             fetchMaterials(); 
         } catch (err) {
             alert('Upload failed: ' + (err.response?.data?.message || "Server Error"));
         }
     };
 
-    // --- EDIT HANDLER ---
+    // --- EDIT & DELETE HANDLERS ---
     const handleEdit = async (id, currentTitle) => {
         const newTitle = window.prompt("Enter the new file name:", currentTitle);
         if (!newTitle || newTitle === currentTitle) return; 
-
         try {
-            await axios.put(`https://study-marrow-api.onrender.com/api/materials/${id}`, 
-                { title: newTitle }, 
-                { headers: { 'admin-key': adminKey } }
-            );
+            await axios.put(`https://study-marrow-api.onrender.com/api/materials/${id}`, { title: newTitle }, { headers: { 'admin-key': adminKey } });
             fetchMaterials(); 
-        } catch (err) {
-            alert("❌ Update failed.");
-        }
+        } catch (err) { alert("❌ Update failed."); }
     };
 
-    // --- DELETE HANDLER ---
     const handleDelete = async (id) => {
         if (!window.confirm("Delete this file?")) return;
         try {
-            await axios.delete(`https://study-marrow-api.onrender.com/api/materials/${id}`, {
-                headers: { 'admin-key': adminKey }
-            });
+            await axios.delete(`https://study-marrow-api.onrender.com/api/materials/${id}`, { headers: { 'admin-key': adminKey } });
             fetchMaterials();
         } catch (err) { alert("Error deleting"); }
     };
 
-    // ✅ NEW: REORDER LOGIC (Move Up / Down)
-    const handleMove = async (fileToMove, direction, allFilesConfig) => {
-        // 1. Get the current visible list for this folder
+    // --- REORDER LOGIC ---
+    const handleMove = async (fileToMove, direction, config) => {
+        // Find visible list. Failsafe: if old file lacks vertical, treat as config.vert
         const currentList = materials.filter(m => 
-            m.category === allFilesConfig.cat && 
-            (!allFilesConfig.sub || m.subject === allFilesConfig.sub)
+            (m.vertical === config.vert || (!m.vertical && config.vert === 'School Academics')) && 
+            m.category === config.cat && 
+            (!config.sub || m.subject === config.sub)
         );
 
-        // 2. Find index of clicked item
         const index = currentList.findIndex(m => m._id === fileToMove._id);
         if (index === -1) return;
 
-        // 3. Swap in local array
         const newIndex = index + direction;
-        if (newIndex < 0 || newIndex >= currentList.length) return; // Can't move past edges
+        if (newIndex < 0 || newIndex >= currentList.length) return; 
 
-        // Swap the items
         const temp = currentList[index];
         currentList[index] = currentList[newIndex];
         currentList[newIndex] = temp;
 
-        // 4. Send NEW ORDER to Server
-        // We assign order 0, 1, 2... based on current list position
-        const updates = currentList.map((item, idx) => ({
-            id: item._id,
-            order: idx
-        }));
+        const updates = currentList.map((item, idx) => ({ id: item._id, order: idx }));
 
         try {
-            // Optimistic UI Update (Fast)
             setMaterials(prev => {
                 const updated = [...prev];
                 updates.forEach(u => {
                    const found = updated.find(m => m._id === u.id);
                    if (found) found.order = u.order;
                 });
-                return updated.sort((a, b) => a.order - b.order); // Re-sort locally
+                return updated.sort((a, b) => a.order - b.order);
             });
-
-            // Server Update (Background)
-            await axios.put('https://study-marrow-api.onrender.com/api/materials/reorder', 
-                { updates }, 
-                { headers: { 'admin-key': adminKey } }
-            );
-        } catch (err) {
-            alert("❌ Reorder failed");
-            fetchMaterials(); // Revert on error
-        }
+            await axios.put('https://study-marrow-api.onrender.com/api/materials/reorder', { updates }, { headers: { 'admin-key': adminKey } });
+        } catch (err) { alert("❌ Reorder failed"); fetchMaterials(); }
     };
 
-
-    // --- HELPER: Filter materials for display ---
-    const getFiles = (cat, sub) => {
-        return materials.filter(m => m.category === cat && (sub ? m.subject === sub : true));
+    // --- HELPER: Filter materials ---
+    const getFiles = (vert, cat, sub) => {
+        return materials.filter(m => 
+            (m.vertical === vert || (!m.vertical && vert === 'School Academics')) && 
+            m.category === cat && 
+            (sub ? m.subject === sub : true)
+        );
     };
 
     // --- LOGIN SCREEN ---
@@ -183,16 +171,8 @@ function AdminPanel() {
             <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#f1f5f9' }}>
                 <form onSubmit={handleLogin} style={{ background: 'white', padding: '40px', borderRadius: '15px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', textAlign: 'center', maxWidth: '400px', width: '100%' }}>
                     <h2 style={{ color: '#333', marginBottom: '20px' }}>🔐 Admin Access</h2>
-                    <input 
-                        type="password" 
-                        placeholder="Enter Password" 
-                        value={passwordInput}
-                        onChange={(e) => setPasswordInput(e.target.value)}
-                        style={{ width: '90%', padding: '12px', fontSize: '1rem', marginBottom: '20px', borderRadius: '5px', border: '1px solid #ccc' }}
-                    />
-                    <button type="submit" style={{ width: '100%', padding: '12px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '5px', fontSize: '1rem', cursor: 'pointer', fontWeight: 'bold' }}>
-                        Unlock Panel
-                    </button>
+                    <input type="password" placeholder="Enter Password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} style={inputStyle} />
+                    <button type="submit" style={buttonStyle}>Unlock Panel</button>
                 </form>
             </div>
         );
@@ -200,70 +180,60 @@ function AdminPanel() {
 
     // --- DASHBOARD ---
     return (
-        <div style={{ padding: '2rem', maxWidth: '900px', margin: '0 auto', fontFamily: 'sans-serif' }}>
-            <h1 style={{ textAlign: 'center', color: '#333' }}>⚡ Admin Command Center</h1>
+        <div style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto', fontFamily: 'sans-serif' }}>
+            <h1 style={{ textAlign: 'center', color: '#1e293b' }}>⚡ Mega-Portal Command Center</h1>
 
             {/* UPLOAD FORM */}
-            <div style={{ background: '#f8f9fa', padding: '25px', borderRadius: '12px', marginBottom: '30px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+            <div style={{ background: '#f8f9fa', padding: '25px', borderRadius: '12px', marginBottom: '30px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
                 <h2 style={{ marginTop: 0, color: '#2563eb', marginBottom: '20px' }}>Add New Material</h2>
                 <form onSubmit={handleUpload} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                     
-                    <input type="text" placeholder="File Title (e.g. Real Numbers Notes)" value={title} onChange={(e) => setTitle(e.target.value)} required style={inputStyle} />
+                    <input type="text" placeholder="File Title (e.g. Chapter 1 Notes)" value={title} onChange={(e) => setTitle(e.target.value)} required style={inputStyle} />
                     
+                    {/* 1. VERTICAL SELECTOR */}
+                    <select 
+                        value={vertical} 
+                        onChange={(e) => { setVertical(e.target.value); setCategory(''); setSubject(''); setResourceType(''); setBoard(''); }} 
+                        style={{...inputStyle, background: '#eff6ff', fontWeight: 'bold', borderColor: '#bfdbfe'}}
+                    >
+                        <option value="">-- Select Mega-Category --</option>
+                        {Object.keys(portalData).map(v => <option key={v} value={v}>{v}</option>)}
+                    </select>
+
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                        <select value={category} onChange={(e) => { setCategory(e.target.value); setSubject(''); setResourceType(''); setBoard(''); }} style={inputStyle}>
-                            <option>Class 12 Materials</option>
-                            <option>Class 10 Materials</option>
-                            <option>Current Affairs</option>
+                        {/* 2. CATEGORY (CLASS) SELECTOR */}
+                        <select 
+                            value={category} 
+                            onChange={(e) => { setCategory(e.target.value); setSubject(''); }} 
+                            style={inputStyle} disabled={!vertical}
+                        >
+                            <option value="">-- Select Class --</option>
+                            {vertical && portalData[vertical].categories.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
 
-                        {category.includes('Class') && (
-                            <select value={subject} onChange={(e) => setSubject(e.target.value)} style={inputStyle}>
-                                <option value="">-- Select Subject --</option>
-                                {structure[category].map(sub => <option key={sub} value={sub}>{sub}</option>)}
+                        {/* 3. SUBJECT SELECTOR */}
+                        <select value={subject} onChange={(e) => setSubject(e.target.value)} style={inputStyle} disabled={!category}>
+                            <option value="">-- Select Subject --</option>
+                            {category && portalData[vertical].subjects[category]?.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                        {/* 4. RESOURCE TYPE SELECTOR */}
+                        <select value={resourceType} onChange={(e) => { setResourceType(e.target.value); setBoard(''); }} style={inputStyle} disabled={!vertical}>
+                            <option value="">-- Select Type --</option>
+                            {vertical && portalData[vertical].types.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+
+                        {/* 5. BOARD SELECTOR (Only for School Papers) */}
+                        {vertical === 'School Academics' && (resourceType === 'Previous Year Papers' || resourceType === 'Previous Year Paper') && (
+                            <select value={board} onChange={(e) => setBoard(e.target.value)} required style={{ ...inputStyle, borderColor: '#16a34a', borderWidth: '2px', backgroundColor: '#f0fdf4' }}>
+                                <option value="">-- Select Board --</option>
+                                <option value="CBSE">CBSE</option>
+                                <option value="ASSEB">ASSEB</option>
                             </select>
                         )}
                     </div>
-
-                    {category.includes('Class') && (
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                            <select value={resourceType} onChange={(e) => { setResourceType(e.target.value); setBoard(''); }} style={inputStyle}>
-                                <option value="">-- Select Type --</option>
-                                {category === 'Class 12 Materials' ? (
-                                    <>
-                                        <option>NCERT Book</option>
-                                        <option>NCERT Solutions</option>
-                                        <option>Handwritten Notes</option>
-                                        <option>Previous Year Papers</option>
-                                        <option>Question Bank</option>
-                                    </>
-                                ) : (
-                                    <>
-                                        <option>NCERT Book</option>
-                                        <option>NCERT solutions</option>
-                                        <option>Notes</option>
-                                        <option>Syllabus</option>
-                                        <option>Previous Year Paper</option>
-                                        <option>Question Bank</option>
-                                    </>
-                                )}
-                            </select>
-
-                            {/* ✅ 4. BOARD SELECTOR (Only appears for Previous Year Papers) */}
-                            {(resourceType === 'Previous Year Papers' || resourceType === 'Previous Year Paper') && (
-                                <select 
-                                    value={board} 
-                                    onChange={(e) => setBoard(e.target.value)} 
-                                    required 
-                                    style={{ ...inputStyle, borderColor: '#16a34a', borderWidth: '2px', backgroundColor: '#f0fdf4' }}
-                                >
-                                    <option value="">-- Select Board --</option>
-                                    <option value="CBSE">CBSE</option>
-                                    <option value="ASSEB">ASSEB</option>
-                                </select>
-                            )}
-                        </div>
-                    )}
 
                     <input type="url" placeholder="Paste PDF/Drive Link here (https://...)" value={link} onChange={(e) => setLink(e.target.value)} required style={{ ...inputStyle, borderColor: '#2563eb', background: '#eff6ff' }} />
                     <button type="submit" style={buttonStyle}>Add Link</button>
@@ -293,134 +263,56 @@ function AdminPanel() {
                 </div>
             </div>
             
-            {/* --- 📁 ORGANIZED LIBRARY VIEW --- */}
+            {/* --- 📁 MEGA LIBRARY OVERVIEW --- */}
             <div>
                 <h2 style={{borderBottom: '2px solid #333', paddingBottom: '10px', marginBottom: '20px'}}>
                     📚 Manage Library Files
                 </h2>
 
-                {/* --- 1. CLASS 12 SECTION --- */}
+                {/* 1. SCHOOL ACADEMICS VERTICAL */}
                 <div style={sectionStyle}>
-                    <h3 style={headerStyle}>Class 12 Materials</h3>
-                    {structure['Class 12 Materials'].map(sub => (
-                        <div key={sub} style={{marginBottom: '20px', paddingLeft: '15px', borderLeft: '3px solid #bfdbfe'}}>
-                            <h4 style={{margin: '10px 0', color: '#2563eb'}}>{sub}</h4>
-                            <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
-                                {getFiles('Class 12 Materials', sub).length === 0 ? <small style={{color:'#999'}}>Empty</small> : 
-                                 getFiles('Class 12 Materials', sub).map((f, idx, arr) => (
-                                    <div key={f._id} style={miniItemStyle}>
-                                        <span>
-                                            {f.title} 
-                                            <small style={{color:'#666', marginLeft:'5px'}}>
-                                                ({f.resourceType} {f.board ? ` - ${f.board}` : ''})
-                                            </small>
-                                        </span>
-                                        <div style={{display:'flex', gap:'5px', alignItems:'center'}}>
-                                            {/* ⬆️ UP ARROW */}
-                                            <button 
-                                                onClick={() => handleMove(f, -1, {cat: 'Class 12 Materials', sub})} 
-                                                style={{...arrowBtn, opacity: idx === 0 ? 0.3 : 1}}
-                                                disabled={idx === 0}
-                                            >
-                                                ⬆️
-                                            </button>
-                                            
-                                            {/* ⬇️ DOWN ARROW */}
-                                            <button 
-                                                onClick={() => handleMove(f, 1, {cat: 'Class 12 Materials', sub})} 
-                                                style={{...arrowBtn, opacity: idx === arr.length - 1 ? 0.3 : 1}}
-                                                disabled={idx === arr.length - 1}
-                                            >
-                                                ⬇️
-                                            </button>
-
-                                            <button onClick={() => handleEdit(f._id, f.title)} style={miniEditBtn}>✎</button>
-                                            <button onClick={() => handleDelete(f._id)} style={miniDeleteBtn}>🗑</button>
-                                        </div>
+                    <h2 style={{ marginTop: 0, color: '#0f172a', borderBottom: '2px solid #e2e8f0', paddingBottom: '10px' }}>🏫 School Academics</h2>
+                    {portalData['School Academics'].categories.map(cat => (
+                        <div key={cat} style={{ marginBottom: '20px', paddingLeft: '15px', borderLeft: cat.includes('12') || cat.includes('11') ? '3px solid #bfdbfe' : '3px solid #bbf7d0'}}>
+                            <h3 style={{margin: '15px 0 10px 0', color: '#334155'}}>{cat}</h3>
+                            
+                            {portalData['School Academics'].subjects[cat].map(sub => (
+                                <div key={sub} style={{ marginLeft: '10px', marginBottom: '15px' }}>
+                                    <h4 style={{ margin: '5px 0', color: '#64748b' }}>{sub}</h4>
+                                    <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                                        {getFiles('School Academics', cat, sub).length === 0 ? <small style={{color:'#94a3b8'}}>No files yet.</small> : 
+                                         getFiles('School Academics', cat, sub).map((f, idx, arr) => (
+                                            <div key={f._id} style={miniItemStyle}>
+                                                <span>
+                                                    {f.title} 
+                                                    <small style={{color:'#94a3b8', marginLeft:'5px'}}>
+                                                        ({f.resourceType} {f.board ? ` - ${f.board}` : ''})
+                                                    </small>
+                                                </span>
+                                                <div style={{display:'flex', gap:'5px', alignItems:'center'}}>
+                                                    <button onClick={() => handleMove(f, -1, {vert: 'School Academics', cat, sub})} style={{...arrowBtn, opacity: idx === 0 ? 0.3 : 1}} disabled={idx === 0}>⬆️</button>
+                                                    <button onClick={() => handleMove(f, 1, {vert: 'School Academics', cat, sub})} style={{...arrowBtn, opacity: idx === arr.length - 1 ? 0.3 : 1}} disabled={idx === arr.length - 1}>⬇️</button>
+                                                    <button onClick={() => handleEdit(f._id, f.title)} style={miniEditBtn}>✎</button>
+                                                    <button onClick={() => handleDelete(f._id)} style={miniDeleteBtn}>🗑</button>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                {/* --- 2. CLASS 10 SECTION --- */}
-                <div style={sectionStyle}>
-                    <h3 style={headerStyle}>Class 10 Materials</h3>
-                    {structure['Class 10 Materials'].map(sub => (
-                        <div key={sub} style={{marginBottom: '20px', paddingLeft: '15px', borderLeft: '3px solid #bbf7d0'}}>
-                            <h4 style={{margin: '10px 0', color: '#16a34a'}}>{sub}</h4>
-                            <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
-                                {getFiles('Class 10 Materials', sub).length === 0 ? <small style={{color:'#999'}}>Empty</small> : 
-                                 getFiles('Class 10 Materials', sub).map((f, idx, arr) => (
-                                    <div key={f._id} style={miniItemStyle}>
-                                        <span>
-                                            {f.title} 
-                                            <small style={{color:'#666', marginLeft:'5px'}}>
-                                                ({f.resourceType} {f.board ? ` - ${f.board}` : ''})
-                                            </small>
-                                        </span>
-                                        <div style={{display:'flex', gap:'5px', alignItems:'center'}}>
-                                            {/* ⬆️ UP ARROW */}
-                                            <button 
-                                                onClick={() => handleMove(f, -1, {cat: 'Class 10 Materials', sub})} 
-                                                style={{...arrowBtn, opacity: idx === 0 ? 0.3 : 1}}
-                                                disabled={idx === 0}
-                                            >
-                                                ⬆️
-                                            </button>
-                                            
-                                            {/* ⬇️ DOWN ARROW */}
-                                            <button 
-                                                onClick={() => handleMove(f, 1, {cat: 'Class 10 Materials', sub})} 
-                                                style={{...arrowBtn, opacity: idx === arr.length - 1 ? 0.3 : 1}}
-                                                disabled={idx === arr.length - 1}
-                                            >
-                                                ⬇️
-                                            </button>
-
-                                            <button onClick={() => handleEdit(f._id, f.title)} style={miniEditBtn}>✎</button>
-                                            <button onClick={() => handleDelete(f._id)} style={miniDeleteBtn}>🗑</button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                {/* --- 3. CURRENT AFFAIRS SECTION --- */}
-                <div style={sectionStyle}>
-                    <h3 style={headerStyle}>Current Affairs</h3>
-                    <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
-                        {getFiles('Current Affairs').length === 0 ? <small style={{color:'#999'}}>Empty</small> : 
-                            getFiles('Current Affairs').map((f, idx, arr) => (
-                            <div key={f._id} style={miniItemStyle}>
-                                <span>{f.title}</span>
-                                <div style={{display:'flex', gap:'5px', alignItems:'center'}}>
-                                    {/* ⬆️ UP ARROW */}
-                                    <button 
-                                        onClick={() => handleMove(f, -1, {cat: 'Current Affairs', sub: null})} 
-                                        style={{...arrowBtn, opacity: idx === 0 ? 0.3 : 1}}
-                                        disabled={idx === 0}
-                                    >
-                                        ⬆️
-                                    </button>
-                                    
-                                    {/* ⬇️ DOWN ARROW */}
-                                    <button 
-                                        onClick={() => handleMove(f, 1, {cat: 'Current Affairs', sub: null})} 
-                                        style={{...arrowBtn, opacity: idx === arr.length - 1 ? 0.3 : 1}}
-                                        disabled={idx === arr.length - 1}
-                                    >
-                                        ⬇️
-                                    </button>
-                                    <button onClick={() => handleEdit(f._id, f.title)} style={miniEditBtn}>✎</button>
-                                    <button onClick={() => handleDelete(f._id)} style={miniDeleteBtn}>🗑</button>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    ))}
+                </div>
+
+                {/* 2 & 3. PLACEHOLDERS FOR FUTURE VERTICALS */}
+                <div style={{...sectionStyle, opacity: 0.5}}>
+                    <h2 style={{ marginTop: 0, color: '#64748b', borderBottom: '2px solid #e2e8f0', paddingBottom: '10px' }}>🏢 Job Exam Preparation</h2>
+                    <p style={{fontStyle: 'italic', color: '#94a3b8'}}>Under Progress...</p>
+                </div>
+
+                <div style={{...sectionStyle, opacity: 0.5}}>
+                    <h2 style={{ marginTop: 0, color: '#64748b', borderBottom: '2px solid #e2e8f0', paddingBottom: '10px' }}>🌍 Current Affairs</h2>
+                    <p style={{fontStyle: 'italic', color: '#94a3b8'}}>Under Progress...</p>
                 </div>
 
             </div>
@@ -433,10 +325,9 @@ const inputStyle = { padding: '12px', borderRadius: '6px', border: '1px solid #c
 const buttonStyle = { padding: '12px', borderRadius: '6px', border: 'none', background: '#2563eb', color: 'white', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem' };
 const sectionStyle = { background: 'white', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '30px' };
 const headerStyle = { marginTop: 0, borderBottom: '1px solid #eee', paddingBottom: '10px', color: '#444' };
-const miniItemStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', background: '#f8f9fa', borderRadius: '5px', fontSize: '0.9rem' };
-
+const miniItemStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', background: '#f8f9fa', borderRadius: '5px', fontSize: '0.9rem', border: '1px solid #e2e8f0' };
 const miniEditBtn = { background: '#fef08a', border: 'none', cursor: 'pointer', padding: '5px 10px', borderRadius: '4px' };
 const miniDeleteBtn = { background: '#fee2e2', border: 'none', cursor: 'pointer', padding: '5px 10px', borderRadius: '4px' };
-const arrowBtn = { background: 'transparent', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer', padding: '2px 6px', marginRight: '5px' };
+const arrowBtn = { background: 'white', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', padding: '2px 6px', marginRight: '5px' };
 
 export default AdminPanel;
