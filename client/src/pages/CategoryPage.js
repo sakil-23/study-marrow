@@ -18,56 +18,60 @@ function CategoryPage() {
   const isClass9  = categoryName.includes('Class 9');
   const isClass8  = categoryName.includes('Class 8');
   
-  // Detect Current Affairs
   const isCurrentAffairs = categoryName.includes('Current Affairs');
 
-  // Only School categories are "Deep Folders" (require subject & type selection)
   const isDeepFolder = !isCurrentAffairs;
-
-  // Determine parent vertical for breadcrumbs
   const parentVertical = isCurrentAffairs ? 'Current Affairs' : 'School Academics';
 
-  // --- DEFINE DATA DYNAMICALLY ---
+  // --- DEFINE DATA DYNAMICALLY (Unified to match Admin Panel perfectly) ---
   let subjects = [];
   let types = [];
 
   if (isClass12 || isClass11) {
       subjects = ['Physics', 'Chemistry', 'Biology', 'Maths'];
-      types = ['NCERT Book', 'NCERT Solutions', 'Handwritten Notes', 'Previous Year Papers', 'Question Bank'];
+      types = ['NCERT Book', 'NCERT Solutions', 'Notes', 'Previous Year Papers', 'Question Bank'];
   } else if (isClass10) {
       subjects = ['English', 'Mathematics', 'General Science', 'Social Science', 'Information Technology'];
-      types = ['NCERT Book', 'NCERT solutions', 'Notes', 'Syllabus', 'Previous Year Paper', 'Question Bank'];
+      types = ['NCERT Book', 'NCERT Solutions', 'Notes', 'Syllabus', 'Previous Year Papers', 'Question Bank'];
   } else if (isClass9 || isClass8) {
       subjects = ['English', 'Mathematics', 'General Science', 'Social Science', 'Information Technology'];
-      types = ['NCERT Book', 'NCERT solutions', 'Notes', 'Question Bank'];
+      types = ['NCERT Book', 'NCERT Solutions', 'Notes', 'Question Bank'];
   }
-  // If it's Current Affairs, subjects and types stay empty!
 
-  const isPapersFolder = selectedType === 'Previous Year Papers' || selectedType === 'Previous Year Paper';
+  const isPapersFolder = selectedType === 'Previous Year Papers';
 
   useEffect(() => {
-    // Reset all navigation on category change
     setSelectedSubject(null);
     setSelectedType(null);
     setSelectedBoard(null);
 
     axios.get('https://study-marrow-api.onrender.com/api/materials')
       .then(res => {
-        // Works perfectly for both School and Current Affairs
         const filtered = res.data.filter(item => item.category === categoryName);
         setMaterials(filtered.sort((a, b) => a.order - b.order));
       })
       .catch(err => console.log(err));
   }, [categoryName]);
 
-  // --- FINAL FILE FILTER ---
+  // --- FINAL FILE FILTER (Upgraded to be Smart & Case-Insensitive) ---
   const currentFiles = materials.filter(item => {
-    // If it's Current Affairs, show everything in this category immediately
     if (isCurrentAffairs) return true; 
     
-    // Otherwise, apply School Academics filters
     if (selectedSubject && item.subject !== selectedSubject) return false;
-    if (selectedType && item.resourceType !== selectedType) return false;
+    
+    if (selectedType) {
+        // Force both strings to lowercase to prevent uppercase/lowercase bugs
+        const itemType = (item.resourceType || '').toLowerCase();
+        const targetType = selectedType.toLowerCase();
+        
+        // Handles exact matches AND keeps your older uploads visible!
+        const isMatch = itemType === targetType || 
+                        (targetType === 'notes' && itemType === 'handwritten notes') ||
+                        (targetType === 'previous year papers' && itemType === 'previous year paper');
+        
+        if (!isMatch) return false;
+    }
+    
     if (isPapersFolder && selectedBoard && item.board !== selectedBoard) return false;
     return true;
   });
@@ -112,7 +116,7 @@ function CategoryPage() {
          categoryName.replace(' Materials', '')}
       </h1>
 
-      {/* --- 1. SUBJECTS GRID (Only renders if it's a Deep Folder) --- */}
+      {/* --- 1. SUBJECTS GRID --- */}
       {!selectedSubject && isDeepFolder && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
           {subjects.map((sub) => (
@@ -127,20 +131,32 @@ function CategoryPage() {
         </div>
       )}
 
-      {/* --- 2. TYPES GRID (Only renders if it's a Deep Folder) --- */}
+      {/* --- 2. TYPES GRID (Fixed to accurately count matching items) --- */}
       {selectedSubject && !selectedType && isDeepFolder && (
         <div>
           <button onClick={() => setSelectedSubject(null)} style={backButtonStyle}>← Back to Subjects</button>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginTop: '20px' }}>
-            {types.map((type) => (
-              <div key={type} onClick={() => setSelectedType(type)} style={cardStyle}
-                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
-                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
-                <div style={{ fontSize: '2.5rem' }}>📁</div>
-                <h3>{type}</h3>
-                <p>{materials.filter(m => m.subject === selectedSubject && m.resourceType === type).length} Files</p>
-              </div>
-            ))}
+            {types.map((type) => {
+              // Smart counter to match the new filter logic
+              const fileCount = materials.filter(m => {
+                  if (m.subject !== selectedSubject) return false;
+                  const iType = (m.resourceType || '').toLowerCase();
+                  const tType = type.toLowerCase();
+                  return iType === tType || 
+                         (tType === 'notes' && iType === 'handwritten notes') ||
+                         (tType === 'previous year papers' && iType === 'previous year paper');
+              }).length;
+
+              return (
+                  <div key={type} onClick={() => setSelectedType(type)} style={cardStyle}
+                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
+                    <div style={{ fontSize: '2.5rem' }}>📁</div>
+                    <h3>{type}</h3>
+                    <p>{fileCount} Files</p>
+                  </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -148,7 +164,6 @@ function CategoryPage() {
       {/* --- 3. FILES / BOARD SELECTION --- */}
       {(selectedType || !isDeepFolder) && (
         <div>
-           {/* Only show "Back to folders" if we are actually inside a deep folder */}
            {isDeepFolder && (
              <button onClick={() => {
                  if(selectedBoard) setSelectedBoard(null); 
@@ -191,7 +206,6 @@ function CategoryPage() {
                             <div style={{ flex: 1 }}>
                             <h4 style={{ margin: 0 }}>{file.title}</h4>
                             
-                            {/* Hide sub-text for Current Affairs so it looks cleaner */}
                             {!isCurrentAffairs && (
                                 <small style={{ color: '#64748b' }}>
                                     {file.subject || file.category}
