@@ -18,18 +18,26 @@ function CategoryPage() {
   const isClass9  = categoryName.includes('Class 9');
   const isClass8  = categoryName.includes('Class 8');
   
+  // Detect Current Affairs
   const isCurrentAffairs = categoryName.includes('Current Affairs');
 
+  // Only School categories are "Deep Folders" (require subject & type selection)
   const isDeepFolder = !isCurrentAffairs;
+
+  // Determine parent vertical for breadcrumbs
   const parentVertical = isCurrentAffairs ? 'Current Affairs' : 'School Academics';
 
-  // --- DEFINE DATA DYNAMICALLY (Unified to match Admin Panel perfectly) ---
+  // --- DEFINE DATA DYNAMICALLY ---
   let subjects = [];
   let types = [];
 
-  if (isClass12 || isClass11) {
+  if (isClass12) {
       subjects = ['Physics', 'Chemistry', 'Biology', 'Maths'];
       types = ['NCERT Book', 'NCERT Solutions', 'Notes', 'Previous Year Papers', 'Question Bank'];
+  } else if (isClass11) {
+      // ✅ CLASS 11: Separated from Class 12 to remove Previous Year Papers
+      subjects = ['Physics', 'Chemistry', 'Biology', 'Maths'];
+      types = ['NCERT Book', 'NCERT Solutions', 'Notes', 'Question Bank']; 
   } else if (isClass10) {
       subjects = ['English', 'Mathematics', 'General Science', 'Social Science', 'Information Technology'];
       types = ['NCERT Book', 'NCERT Solutions', 'Notes', 'Syllabus', 'Previous Year Papers', 'Question Bank'];
@@ -37,26 +45,31 @@ function CategoryPage() {
       subjects = ['English', 'Mathematics', 'General Science', 'Social Science', 'Information Technology'];
       types = ['NCERT Book', 'NCERT Solutions', 'Notes', 'Question Bank'];
   }
+  // If it's Current Affairs, subjects and types stay empty!
 
-  const isPapersFolder = selectedType === 'Previous Year Papers';
+  const isPapersFolder = selectedType === 'Previous Year Papers' || selectedType === 'Previous Year Paper';
 
   useEffect(() => {
+    // Reset all navigation on category change
     setSelectedSubject(null);
     setSelectedType(null);
     setSelectedBoard(null);
 
     axios.get('https://study-marrow-api.onrender.com/api/materials')
       .then(res => {
+        // Works perfectly for both School and Current Affairs
         const filtered = res.data.filter(item => item.category === categoryName);
         setMaterials(filtered.sort((a, b) => a.order - b.order));
       })
       .catch(err => console.log(err));
   }, [categoryName]);
 
-  // --- FINAL FILE FILTER (Upgraded to be Smart & Case-Insensitive) ---
+  // --- FINAL FILE FILTER ---
   const currentFiles = materials.filter(item => {
+    // If it's Current Affairs, show everything in this category immediately
     if (isCurrentAffairs) return true; 
     
+    // Otherwise, apply School Academics filters
     if (selectedSubject && item.subject !== selectedSubject) return false;
     
     if (selectedType) {
@@ -131,7 +144,7 @@ function CategoryPage() {
         </div>
       )}
 
-      {/* --- 2. TYPES GRID (Fixed to accurately count matching items) --- */}
+      {/* --- 2. TYPES GRID --- */}
       {selectedSubject && !selectedType && isDeepFolder && (
         <div>
           <button onClick={() => setSelectedSubject(null)} style={backButtonStyle}>← Back to Subjects</button>
@@ -164,6 +177,7 @@ function CategoryPage() {
       {/* --- 3. FILES / BOARD SELECTION --- */}
       {(selectedType || !isDeepFolder) && (
         <div>
+           {/* Only show "Back to folders" if we are actually inside a deep folder */}
            {isDeepFolder && (
              <button onClick={() => {
                  if(selectedBoard) setSelectedBoard(null); 
@@ -206,6 +220,7 @@ function CategoryPage() {
                             <div style={{ flex: 1 }}>
                             <h4 style={{ margin: 0 }}>{file.title}</h4>
                             
+                            {/* Hide sub-text for Current Affairs so it looks cleaner */}
                             {!isCurrentAffairs && (
                                 <small style={{ color: '#64748b' }}>
                                     {file.subject || file.category}
