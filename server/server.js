@@ -3,12 +3,31 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config();
 
+// 🛡️ NEW SECURITY PACKAGES
+const helmet = require('helmet');
+const mongoSanitize = require('express-mongo-sanitize');
+const rateLimit = require('express-rate-limit');
+
 // Models
 const Material = require('./models/Material');
 const Subscriber = require('./models/Subscriber');
 
 const app = express();
 
+// ✅ CRITICAL FOR RENDER: Tells the rate-limiter to read the actual user's IP, not Render's IP.
+app.set('trust proxy', 1);
+
+// ==========================================
+// 🛡️ SECURITY & CONFIG MIDDLEWARE
+// ==========================================
+
+// 1. Helmet: Secures HTTP headers and hides the "Express" footprint
+app.use(helmet()); 
+
+// 2. Mongo Sanitize: Blocks NoSQL Injection
+app.use(mongoSanitize()); 
+
+// 3. CORS: Preserved your exact domains
 app.use(cors({
     origin: [
         "https://study-marrow.vercel.app",
@@ -22,6 +41,27 @@ app.use(cors({
 
 app.use(express.json());
 
+// --- RATE LIMITERS ---
+// General Rate Limiter: Protects against DDoS (Site crashing)
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 500, // Limit each IP to 500 requests per 15 min
+    message: { message: "⚠️ Too many requests from this IP. Please wait 15 minutes." }
+});
+
+// Strict Login Limiter: Protects against Brute-Force Password Hacking
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, 
+    max: 6, // Locks out after 6 failed login attempts!
+    message: { message: "🚫 Too many failed login attempts. You are locked out for 15 minutes." }
+});
+
+// Apply general limiter to all API routes
+app.use('/api/', apiLimiter);
+
+// ==========================================
+// 🗄️ DATABASE & AUTH
+// ==========================================
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "mysecretpass";
 
 const verifyAdmin = (req, res, next) => {
@@ -34,12 +74,16 @@ const verifyAdmin = (req, res, next) => {
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/eduportal';
 mongoose.connect(MONGO_URI)
-    .then(() => console.log('MongoDB Connected'))
+    .then(() => console.log('✅ MongoDB Connected Securely'))
     .catch(err => console.log(err));
 
 app.get('/', (req, res) => res.send('Server is running and healthy! 🚀'));
 
-// ✅ UPDATED: Sort by 'order' (Ascending 1, 2, 3...), then by 'date' (Newest first)
+// ==========================================
+// 🚀 API ROUTES
+// ==========================================
+
+// 1. GET ALL MATERIALS
 app.get('/api/materials', async (req, res) => {
     try {
         const materials = await Material.find().sort({ order: 1, date: -1 });
@@ -49,16 +93,13 @@ app.get('/api/materials', async (req, res) => {
     }
 });
 
-// ✅ NEW ROUTE: BATCH REORDER (This saves the new positions)
+// 2. REORDER MATERIALS
 app.put('/api/materials/reorder', verifyAdmin, async (req, res) => {
     try {
-        const { updates } = req.body; // Expects list: [{id: "...", order: 1}, ...]
-        
-        // Loop through the list and update each file's position
+        const { updates } = req.body; 
         const operations = updates.map(item => {
             return Material.findByIdAndUpdate(item.id, { order: item.order });
         });
-
         await Promise.all(operations);
         res.json({ message: "Order updated successfully" });
     } catch (err) {
@@ -66,6 +107,7 @@ app.put('/api/materials/reorder', verifyAdmin, async (req, res) => {
     }
 });
 
+// 3. ADD SUBSCRIBER
 app.post('/api/subscribe', async (req, res) => {
     try {
         const { email } = req.body;
@@ -78,25 +120,23 @@ app.post('/api/subscribe', async (req, res) => {
     } catch (err) { res.status(500).json({ message: "Server error" }); }
 });
 
-app.post('/api/verify-admin', verifyAdmin, (req, res) => res.json({ success: true }));
+// 4. 🔐 VERIFY ADMIN (Now protected by strict login limiter!)
+app.post('/api/verify-admin', loginLimiter, verifyAdmin, (req, res) => res.json({ success: true }));
 
 
-// 4. ✅ UPLOAD MATERIAL (UPDATED: AUTO-TOP)
+// 5. ✅ UPLOAD MATERIAL (UPGRADED FOR MEGA-PORTAL)
 app.post('/api/upload', verifyAdmin, async (req, res) => {
     try {
-        const { title, category, subject, resourceType, link, board } = req.body;
+        // Now accurately accepting 'vertical' from your frontend
+        const { vertical, title, category, subject, resourceType, link, board } = req.body;
         
-        // 1. Find the current item with the Lowest order number (The Top Item)
-        // We look specifically in the same Category and Subject
-        const topItem = await Material.findOne({ category, subject }).sort({ order: 1 });
-        
-        // 2. Calculate new order: One step higher than the top item
-        // If topItem is order 10, new is 9. If top is 0, new is -1.
+        // Find the top item, strictly filtering by vertical as well
+        const topItem = await Material.findOne({ vertical, category, subject }).sort({ order: 1 });
         const newOrder = topItem ? topItem.order - 1 : 0;
 
         const newMaterial = new Material({ 
-            title, category, subject, resourceType, link, board,
-            order: newOrder // ✅ Places it at the very top
+            vertical, title, category, subject, resourceType, link, board,
+            order: newOrder 
         });
         
         await newMaterial.save();
@@ -104,7 +144,7 @@ app.post('/api/upload', verifyAdmin, async (req, res) => {
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// RENAME ROUTE
+// 6. RENAME MATERIAL
 app.put('/api/materials/:id', verifyAdmin, async (req, res) => {
     try {
         const { title } = req.body;
@@ -117,6 +157,7 @@ app.put('/api/materials/:id', verifyAdmin, async (req, res) => {
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
+// 7. DELETE MATERIAL
 app.delete('/api/materials/:id', verifyAdmin, async (req, res) => {
     try {
         await Material.findByIdAndDelete(req.params.id);
@@ -124,6 +165,7 @@ app.delete('/api/materials/:id', verifyAdmin, async (req, res) => {
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
+// 8. GET SUBSCRIBERS
 app.get('/api/subscribe', verifyAdmin, async (req, res) => {
     try {
         const subs = await Subscriber.find().sort({ dateJoined: -1 });
@@ -131,5 +173,9 @@ app.get('/api/subscribe', verifyAdmin, async (req, res) => {
     } catch (err) { res.status(500).json({ message: "Error" }); }
 });
 
+// ==========================================
+// 🏁 START SERVER
+// ==========================================
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
+// Preserved your 0.0.0.0 binding
+app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Secure Server running on port ${PORT}`));
