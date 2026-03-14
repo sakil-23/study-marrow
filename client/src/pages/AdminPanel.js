@@ -5,7 +5,7 @@ function AdminPanel() {
     // --- LOGIN STATE ---
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [passwordInput, setPasswordInput] = useState('');
-    const [adminKey, setAdminKey] = useState('');
+    const [token, setToken] = useState(''); // 🆕 Changed from adminKey to token
 
     // --- DATA STATE ---
     const [vertical, setVertical] = useState('School Academics'); 
@@ -33,7 +33,6 @@ function AdminPanel() {
             types: ['NCERT Book', 'NCERT Solutions', 'Notes', 'Syllabus', 'Previous Year Papers', 'Question Bank']
         },
         'Current Affairs': {
-            // ✅ NEW: Just Categories! No subjects or types needed.
             categories: ['Weekly Current Affairs', 'Monthly Current Affairs', 'Specific Event Current Affairs']
         },
         'Job Exam Preparation': {
@@ -45,16 +44,19 @@ function AdminPanel() {
     const handleLogin = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('https://study-marrow-api.onrender.com/api/verify-admin', {}, {
-                headers: { 'admin-key': passwordInput }
+            const res = await axios.post('https://study-marrow-api.onrender.com/api/verify-admin', {}, {
+                headers: { 'admin-key': passwordInput } // Initial login still uses password
             });
-            setAdminKey(passwordInput);
+            
+            // 🆕 Catch the secure JWT Token and save it!
+            const receivedToken = res.data.token;
+            setToken(receivedToken);
             setIsAuthenticated(true);
-            fetchData(passwordInput);
+            fetchData(receivedToken);
         } catch (err) { alert("❌ Wrong Password! Access Denied."); }
     };
 
-    const fetchData = (key) => { fetchMaterials(); fetchSubscribers(key); };
+    const fetchData = (currentToken) => { fetchMaterials(); fetchSubscribers(currentToken); };
     
     const fetchMaterials = async () => {
         try {
@@ -63,9 +65,12 @@ function AdminPanel() {
         } catch (err) { console.error(err); }
     };
     
-    const fetchSubscribers = async (key) => {
+    const fetchSubscribers = async (currentToken) => {
         try {
-            const res = await axios.get('https://study-marrow-api.onrender.com/api/subscribe', { headers: { 'admin-key': key } });
+            // 🆕 Send the Bearer Token to fetch private data
+            const res = await axios.get('https://study-marrow-api.onrender.com/api/subscribe', { 
+                headers: { Authorization: `Bearer ${currentToken}` } 
+            });
             setSubscribers(res.data);
         } catch (err) { console.error("Error fetching subscribers"); }
     };
@@ -81,11 +86,10 @@ function AdminPanel() {
             return alert("⚠️ This section is under progress.");
         }
 
-        // ✅ SMART VALIDATION
         if (vertical === 'Current Affairs') {
             if (!category || !title || !link) return alert("Please fill Title, Category, and Link!");
-            finalSubject = ''; // Bypass subject requirement
-            finalType = 'Current Affairs'; // Bypass type requirement
+            finalSubject = ''; 
+            finalType = 'Current Affairs'; 
         } else {
             if (!category || !subject || !resourceType || !title || !link) return alert("Please fill all dropdowns!");
             if (resourceType.includes('Papers') && !board) return alert("⚠️ Please select a Board (CBSE or ASSEB)!");
@@ -94,8 +98,9 @@ function AdminPanel() {
         const materialData = { vertical, category, subject: finalSubject, resourceType: finalType, link, board, title };
 
         try {
+            // 🆕 Send Bearer Token to authorize upload
             await axios.post('https://study-marrow-api.onrender.com/api/upload', materialData, {
-                headers: { 'admin-key': adminKey }
+                headers: { Authorization: `Bearer ${token}` }
             });
             alert('✅ Link Added Successfully!');
             setTitle(''); setLink(''); setBoard(''); 
@@ -110,7 +115,10 @@ function AdminPanel() {
         const newTitle = window.prompt("Enter the new file name:", currentTitle);
         if (!newTitle || newTitle === currentTitle) return; 
         try {
-            await axios.put(`https://study-marrow-api.onrender.com/api/materials/${id}`, { title: newTitle }, { headers: { 'admin-key': adminKey } });
+            // 🆕 Send Bearer Token to authorize edit
+            await axios.put(`https://study-marrow-api.onrender.com/api/materials/${id}`, { title: newTitle }, { 
+                headers: { Authorization: `Bearer ${token}` } 
+            });
             fetchMaterials(); 
         } catch (err) { alert("❌ Update failed."); }
     };
@@ -118,7 +126,10 @@ function AdminPanel() {
     const handleDelete = async (id) => {
         if (!window.confirm("Delete this file?")) return;
         try {
-            await axios.delete(`https://study-marrow-api.onrender.com/api/materials/${id}`, { headers: { 'admin-key': adminKey } });
+            // 🆕 Send Bearer Token to authorize delete
+            await axios.delete(`https://study-marrow-api.onrender.com/api/materials/${id}`, { 
+                headers: { Authorization: `Bearer ${token}` } 
+            });
             fetchMaterials();
         } catch (err) { alert("Error deleting"); }
     };
@@ -152,7 +163,10 @@ function AdminPanel() {
                 });
                 return updated.sort((a, b) => a.order - b.order);
             });
-            await axios.put('https://study-marrow-api.onrender.com/api/materials/reorder', { updates }, { headers: { 'admin-key': adminKey } });
+            // 🆕 Send Bearer Token to authorize reorder
+            await axios.put('https://study-marrow-api.onrender.com/api/materials/reorder', { updates }, { 
+                headers: { Authorization: `Bearer ${token}` } 
+            });
         } catch (err) { alert("❌ Reorder failed"); fetchMaterials(); }
     };
 
@@ -242,7 +256,7 @@ function AdminPanel() {
                 </form>
             </div>
 
-            {/* ✅ SUBSCRIBER LIST (RESTORED!) */}
+            {/* SUBSCRIBER LIST */}
             <div style={{ background: '#fff', padding: '20px', borderRadius: '10px', border: '1px solid #ddd', marginBottom: '30px' }}>
                 <h3 style={{ marginTop: 0, color: '#16a34a', borderBottom: '2px solid #16a34a', paddingBottom: '10px' }}>
                     📬 Subscriber List ({subscribers.length})
@@ -271,7 +285,7 @@ function AdminPanel() {
                     📚 Manage Library Files
                 </h2>
 
-                {/* ✅ DYNAMICALLY RENDER VERTICALS */}
+                {/* DYNAMICALLY RENDER VERTICALS */}
                 {['School Academics', 'Current Affairs'].map(vert => (
                     <div key={vert} style={sectionStyle}>
                         <h2 style={{ marginTop: 0, color: '#0f172a', borderBottom: '2px solid #e2e8f0', paddingBottom: '10px' }}>
@@ -332,7 +346,6 @@ function AdminPanel() {
                     </div>
                 ))}
 
-                {/* PLACEHOLDER FOR FUTURE VERTICAL */}
                 <div style={{...sectionStyle, opacity: 0.5}}>
                     <h2 style={{ marginTop: 0, color: '#64748b', borderBottom: '2px solid #e2e8f0', paddingBottom: '10px' }}>🏢 Job Exam Preparation</h2>
                     <p style={{fontStyle: 'italic', color: '#94a3b8'}}>Under Progress...</p>
