@@ -7,6 +7,8 @@ require('dotenv').config();
 const helmet = require('helmet');
 const mongoSanitize = require('express-mongo-sanitize');
 const rateLimit = require('express-rate-limit');
+const jwt = require('jsonwebtoken'); // 🆕 JSON Web Tokens
+const { body, validationResult } = require('express-validator'); // 🆕 Input Validator
 
 // 📧 EMAIL PACKAGE
 const nodemailer = require('nodemailer');
@@ -76,13 +78,22 @@ app.use('/api/', apiLimiter);
 // 🗄️ DATABASE & AUTH
 // ==========================================
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "mysecretpass";
+const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_key"; // 🆕 Setup your secret in Render!
 
+// 🆕 JWT VERIFICATION MIDDLEWARE (Replaces raw password check)
 const verifyAdmin = (req, res, next) => {
-    const providedPassword = req.headers['admin-key'];
-    if (providedPassword !== ADMIN_PASSWORD) {
-        return res.status(403).json({ message: "⛔ Access Denied: Wrong Password" });
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(403).json({ message: "⛔ Access Denied: No Token Provided" });
     }
-    next();
+
+    const token = authHeader.split(" ")[1];
+    try {
+        jwt.verify(token, JWT_SECRET); // Ensures the keycard is real and not expired
+        next();
+    } catch (err) {
+        return res.status(403).json({ message: "⛔ Access Denied: Invalid or Expired Token" });
+    }
 };
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/eduportal';
@@ -96,17 +107,15 @@ app.get('/', (req, res) => res.send('Server is running and healthy! 🚀'));
 // 🚀 API ROUTES
 // ==========================================
 
-// 1. GET ALL MATERIALS
+// 1. GET ALL MATERIALS (Public)
 app.get('/api/materials', async (req, res) => {
     try {
         const materials = await Material.find().sort({ order: 1, date: -1 });
         res.json(materials);
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
+    } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// 2. REORDER MATERIALS
+// 2. REORDER MATERIALS (Protected)
 app.put('/api/materials/reorder', verifyAdmin, async (req, res) => {
     try {
         const { updates } = req.body; 
@@ -115,13 +124,16 @@ app.put('/api/materials/reorder', verifyAdmin, async (req, res) => {
         });
         await Promise.all(operations);
         res.json({ message: "Order updated successfully" });
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
+    } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// 3. ADD SUBSCRIBER
-app.post('/api/subscribe', async (req, res) => {
+// 3. ADD SUBSCRIBER (Public - 🆕 Now with Email Validation)
+app.post('/api/subscribe', [
+    body('email').isEmail().withMessage('Must be a valid email address').normalizeEmail()
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ message: "Invalid email format", errors: errors.array() });
+
     try {
         const { email } = req.body;
         const exists = await Subscriber.findOne({ email });
@@ -133,12 +145,30 @@ app.post('/api/subscribe', async (req, res) => {
     } catch (err) { res.status(500).json({ message: "Server error" }); }
 });
 
-// 4. VERIFY ADMIN
-app.post('/api/verify-admin', loginLimiter, verifyAdmin, (req, res) => res.json({ success: true }));
+// 4. VERIFY ADMIN (🆕 Now issues a JWT Token valid for 2 hours)
+app.post('/api/verify-admin', loginLimiter, (req, res) => {
+    const providedPassword = req.headers['admin-key'];
+    if (providedPassword === ADMIN_PASSWORD) {
+        const token = jwt.sign({ role: 'admin' }, JWT_SECRET, { expiresIn: '2h' });
+        res.json({ success: true, token }); // Send back the token!
+    } else {
+        res.status(403).json({ message: "⛔ Access Denied: Wrong Password" });
+    }
+});
 
 
-// 5. ✅ UPLOAD MATERIAL (WITH EMAIL AUTOMATION EXCLUDING ADMIN)
-app.post('/api/upload', verifyAdmin, async (req, res) => {
+// 5. UPLOAD MATERIAL (Protected - 🆕 Now with Strict Input Validation)
+app.post('/api/upload', verifyAdmin, [
+    body('title').trim().notEmpty().escape(), // Removes HTML tags
+    body('link').isURL().withMessage("Must be a valid URL"), // Ensures it's a real link
+    body('vertical').trim().notEmpty().escape(),
+    body('category').trim().notEmpty().escape()
+], async (req, res) => {
+    
+    // Check if the validator caught any bad data
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ message: "Invalid input data detected", errors: errors.array() });
+
     try {
         const { vertical, title, category, subject, resourceType, link, board } = req.body;
         
@@ -157,17 +187,13 @@ app.post('/api/upload', verifyAdmin, async (req, res) => {
             const subs = await Subscriber.find({}, 'email');
             
             if (subs.length > 0 && process.env.EMAIL_USER) {
-                // Extract emails and strictly filter out the sender's own email address
-                const bccList = subs
-                    .map(s => s.email)
-                    .filter(email => email !== process.env.EMAIL_USER)
-                    .join(',');
+                const bccList = subs.map(s => s.email).filter(email => email !== process.env.EMAIL_USER).join(',');
 
                 if (bccList.length > 0) {
                     const mailOptions = {
                         from: `"Study Marrow" <${process.env.EMAIL_USER}>`,
-                        to: `"Study Marrow Subscribers" <noreply@studymarrow.com>`, // Dummy target stops Gmail routing it back to you
-                        bcc: bccList, // BCC protects everyone's privacy
+                        to: `"Study Marrow Subscribers" <noreply@studymarrow.com>`, 
+                        bcc: bccList, 
                         subject: `📚 New Upload: ${title}`,
                         html: `
                             <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
@@ -195,21 +221,22 @@ app.post('/api/upload', verifyAdmin, async (req, res) => {
                         `
                     };
 
-                    // Send without awaiting so the upload finishes instantly for you
                     transporter.sendMail(mailOptions).catch(err => console.error("Email failed:", err));
                 }
             }
-        } catch (emailError) {
-            console.error("Error sending emails:", emailError);
-        }
-        // ----------------------------------------
+        } catch (emailError) { console.error("Error sending emails:", emailError); }
 
         res.status(201).json(newMaterial);
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// 6. RENAME MATERIAL
-app.put('/api/materials/:id', verifyAdmin, async (req, res) => {
+// 6. RENAME MATERIAL (Protected - 🆕 Now with Title Validation)
+app.put('/api/materials/:id', verifyAdmin, [
+    body('title').trim().notEmpty().escape()
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ message: "Invalid title format", errors: errors.array() });
+
     try {
         const { title } = req.body;
         const updatedMaterial = await Material.findByIdAndUpdate(
@@ -221,7 +248,7 @@ app.put('/api/materials/:id', verifyAdmin, async (req, res) => {
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// 7. DELETE MATERIAL
+// 7. DELETE MATERIAL (Protected)
 app.delete('/api/materials/:id', verifyAdmin, async (req, res) => {
     try {
         await Material.findByIdAndDelete(req.params.id);
@@ -229,7 +256,7 @@ app.delete('/api/materials/:id', verifyAdmin, async (req, res) => {
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// 8. GET SUBSCRIBERS
+// 8. GET SUBSCRIBERS (Protected)
 app.get('/api/subscribe', verifyAdmin, async (req, res) => {
     try {
         const subs = await Subscriber.find().sort({ dateJoined: -1 });
