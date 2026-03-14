@@ -3,10 +3,13 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config();
 
-// 🛡️ NEW SECURITY PACKAGES
+// 🛡️ SECURITY PACKAGES
 const helmet = require('helmet');
 const mongoSanitize = require('express-mongo-sanitize');
 const rateLimit = require('express-rate-limit');
+
+// 📧 EMAIL PACKAGE
+const nodemailer = require('nodemailer');
 
 // Models
 const Material = require('./models/Material');
@@ -14,20 +17,33 @@ const Subscriber = require('./models/Subscriber');
 
 const app = express();
 
-// ✅ CRITICAL FOR RENDER: Tells the rate-limiter to read the actual user's IP, not Render's IP.
+// ✅ CRITICAL FOR RENDER: Tells the rate-limiter to read the actual user's IP
 app.set('trust proxy', 1);
+
+// ==========================================
+// 📧 EMAIL TRANSPORTER SETUP
+// ==========================================
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
+});
+
+transporter.verify((error, success) => {
+    if (error) {
+        console.log("⚠️ Email Service Error (Check EMAIL_USER and EMAIL_PASS):", error);
+    } else {
+        console.log("📧 Email Service is Ready!");
+    }
+});
 
 // ==========================================
 // 🛡️ SECURITY & CONFIG MIDDLEWARE
 // ==========================================
-
-// 1. Helmet: Secures HTTP headers and hides the "Express" footprint
 app.use(helmet()); 
-
-// 2. Mongo Sanitize: Blocks NoSQL Injection
 app.use(mongoSanitize()); 
-
-// 3. CORS: Preserved your exact domains
 app.use(cors({
     origin: [
         "https://study-marrow.vercel.app",
@@ -42,21 +58,18 @@ app.use(cors({
 app.use(express.json());
 
 // --- RATE LIMITERS ---
-// General Rate Limiter: Protects against DDoS (Site crashing)
 const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 500, // Limit each IP to 500 requests per 15 min
+    windowMs: 15 * 60 * 1000, 
+    max: 500, 
     message: { message: "⚠️ Too many requests from this IP. Please wait 15 minutes." }
 });
 
-// Strict Login Limiter: Protects against Brute-Force Password Hacking
 const loginLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, 
-    max: 6, // Locks out after 6 failed login attempts!
+    max: 6, 
     message: { message: "🚫 Too many failed login attempts. You are locked out for 15 minutes." }
 });
 
-// Apply general limiter to all API routes
 app.use('/api/', apiLimiter);
 
 // ==========================================
@@ -120,17 +133,15 @@ app.post('/api/subscribe', async (req, res) => {
     } catch (err) { res.status(500).json({ message: "Server error" }); }
 });
 
-// 4. 🔐 VERIFY ADMIN (Now protected by strict login limiter!)
+// 4. VERIFY ADMIN
 app.post('/api/verify-admin', loginLimiter, verifyAdmin, (req, res) => res.json({ success: true }));
 
 
-// 5. ✅ UPLOAD MATERIAL (UPGRADED FOR MEGA-PORTAL)
+// 5. ✅ UPLOAD MATERIAL (WITH EMAIL AUTOMATION EXCLUDING ADMIN)
 app.post('/api/upload', verifyAdmin, async (req, res) => {
     try {
-        // Now accurately accepting 'vertical' from your frontend
         const { vertical, title, category, subject, resourceType, link, board } = req.body;
         
-        // Find the top item, strictly filtering by vertical as well
         const topItem = await Material.findOne({ vertical, category, subject }).sort({ order: 1 });
         const newOrder = topItem ? topItem.order - 1 : 0;
 
@@ -140,6 +151,59 @@ app.post('/api/upload', verifyAdmin, async (req, res) => {
         });
         
         await newMaterial.save();
+
+        // ✉️ --- SEND EMAIL NOTIFICATION ---
+        try {
+            const subs = await Subscriber.find({}, 'email');
+            
+            if (subs.length > 0 && process.env.EMAIL_USER) {
+                // Extract emails and strictly filter out the sender's own email address
+                const bccList = subs
+                    .map(s => s.email)
+                    .filter(email => email !== process.env.EMAIL_USER)
+                    .join(',');
+
+                if (bccList.length > 0) {
+                    const mailOptions = {
+                        from: `"Study Marrow" <${process.env.EMAIL_USER}>`,
+                        to: `"Study Marrow Subscribers" <noreply@studymarrow.com>`, // Dummy target stops Gmail routing it back to you
+                        bcc: bccList, // BCC protects everyone's privacy
+                        subject: `📚 New Upload: ${title}`,
+                        html: `
+                            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
+                                <div style="background-color: #0f172a; padding: 20px; text-align: center;">
+                                    <h1 style="color: white; margin: 0;">Study Marrow</h1>
+                                </div>
+                                <div style="padding: 30px; background-color: #f8fafc;">
+                                    <h2 style="color: #1e293b; margin-top: 0;">New Material Added! 🚀</h2>
+                                    <p style="color: #475569; font-size: 16px;">We have just uploaded a new resource to help with your preparation.</p>
+                                    
+                                    <div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 20px 0;">
+                                        <p style="margin: 5px 0;"><strong>Title:</strong> ${title}</p>
+                                        <p style="margin: 5px 0;"><strong>Category:</strong> ${vertical} > ${category} ${subject ? '> ' + subject : ''}</p>
+                                        <p style="margin: 5px 0;"><strong>Type:</strong> ${resourceType}</p>
+                                    </div>
+
+                                    <div style="text-align: center; margin-top: 30px;">
+                                        <a href="${link}" style="background-color: #2563eb; color: white; padding: 12px 25px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Access Material</a>
+                                    </div>
+                                </div>
+                                <div style="text-align: center; padding: 15px; font-size: 12px; color: #94a3b8;">
+                                    You are receiving this because you subscribed to Study Marrow updates.
+                                </div>
+                            </div>
+                        `
+                    };
+
+                    // Send without awaiting so the upload finishes instantly for you
+                    transporter.sendMail(mailOptions).catch(err => console.error("Email failed:", err));
+                }
+            }
+        } catch (emailError) {
+            console.error("Error sending emails:", emailError);
+        }
+        // ----------------------------------------
+
         res.status(201).json(newMaterial);
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
@@ -177,5 +241,4 @@ app.get('/api/subscribe', verifyAdmin, async (req, res) => {
 // 🏁 START SERVER
 // ==========================================
 const PORT = process.env.PORT || 5000;
-// Preserved your 0.0.0.0 binding
 app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Secure Server running on port ${PORT}`));
