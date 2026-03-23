@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
+// 🆕 Import the new SM logo from your src folder
+import logo from '../logo.png'; 
+
 function Home() {
   const location = useLocation();
   const [search, setSearch] = useState('');
@@ -45,8 +48,32 @@ function Home() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
       
+      {/* ========================================== */}
+      {/* 🆕 PROFESSIONAL BRANDED NAVBAR             */}
+      {/* ========================================== */}
+      <nav style={navbarStyle}>
+        <div style={navContainerStyle}>
+          
+          {/* Logo & Title with Hover Effect */}
+          <Link onClick={() => setSelectedVertical(null)} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+            <img 
+                src={logo} 
+                alt="Study Marrow Logo" 
+                className="logo-effect" 
+            />
+            <span style={logoTextStyle}>STUDY MARROW</span>
+          </Link>
+
+          {/* Simple Navigation Links */}
+          <div style={navLinksStyle}>
+            <span style={navLinkItemStyle} onClick={() => setSelectedVertical(null)}>Home</span>
+            <span style={navLinkItemStyle} onClick={() => window.scrollTo(0, 500)}>Library</span>
+          </div>
+        </div>
+      </nav>
+
       {/* --- HERO SECTION --- */}
       <section className="hero" style={{ padding: '4rem 1rem', background: '#0f172a', color: 'white', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
         <div className="particles">
@@ -169,7 +196,7 @@ function Home() {
                     </div>
                 )}
 
-                {/* ✅ NEW: LEVEL 2: INSIDE CURRENT AFFAIRS */}
+                {/* ✅ LEVEL 2: INSIDE CURRENT AFFAIRS */}
                 {selectedVertical === 'Current Affairs' && (
                     <div className="fade-in">
                         <h2 style={sectionTitleStyle}>🌍 Current Affairs</h2>
@@ -218,79 +245,82 @@ function Home() {
         </div>
       </footer>
       
-      {/* --- INLINE CSS FOR HOVER EFFECTS --- */}
+      {/* ========================================== */}
+      {/* 🆕 INLINE CSS WITH LOGO GLOW EFFECT        */}
+      {/* ========================================== */}
       <style>{`
         .hover-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
         .hover-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; }
         .fade-in { animation: fadeIn 0.4s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* THE LOGO HOVER EFFECT */
+        .logo-effect {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 0 rgba(59, 130, 246, 0);
+        }
+        .logo-effect:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.7); /* Pulsing Blue Glow */
+        }
       `}</style>
 
     </div>
   );
 }
 
-// --- STYLES ---
-const sectionTitleStyle = {
-    borderLeft: '5px solid #3b82f6',
-    paddingLeft: '15px',
-    color: '#1e293b',
-    marginBottom: '30px'
+// ==========================================
+// 🆕 NAVBAR STYLES
+// ==========================================
+const navbarStyle = {
+    background: '#ffffff',
+    padding: '12px 0',
+    borderBottom: '1px solid #e2e8f0',
+    position: 'sticky',
+    top: 0,
+    zIndex: 1000,
+    boxShadow: '0 2px 5px rgba(0,0,0,0.05)'
 };
 
-const verticalCardStyle = {
-    background: 'white',
-    padding: '40px 30px',
-    borderRadius: '20px',
-    boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
-    border: '1px solid #e2e8f0',
-    textAlign: 'center',
-    cursor: 'pointer',
-    position: 'relative' // For the badge
-};
-
-const subCategoryCardStyle = {
-    background: 'white',
-    padding: '25px',
-    borderRadius: '15px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-    border: '1px solid #e2e8f0',
-    textAlign: 'center',
-    cursor: 'pointer',
-};
-
-const comingSoonBadge = {
-    position: 'absolute',
-    top: '20px',
-    right: '20px',
-    background: '#fef08a',
-    color: '#854d0e',
-    padding: '5px 10px',
-    borderRadius: '20px',
-    fontSize: '0.75rem',
-    fontWeight: 'bold'
-};
-
-const fileItemStyle = {
+const navContainerStyle = {
+    maxWidth: '1200px',
+    margin: '0 auto',
+    padding: '0 20px',
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '15px 20px',
-    background: 'white',
-    border: '1px solid #e2e8f0',
-    borderRadius: '10px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+    alignItems: 'center'
 };
 
-const downloadBtnStyle = {
-    padding: '8px 20px',
-    background: '#eff6ff',
-    color: '#2563eb',
-    border: '1px solid #bfdbfe',
-    borderRadius: '6px',
-    textDecoration: 'none',
-    fontWeight: 'bold',
-    fontSize: '0.9rem'
+const logoTextStyle = {
+    fontSize: '1.4rem',
+    fontWeight: '800',
+    color: '#0f172a', // Dark blue to match the "SM" logo
+    letterSpacing: '0.5px'
 };
+
+const navLinksStyle = {
+    display: 'flex',
+    gap: '20px',
+    alignItems: 'center'
+};
+
+const navLinkItemStyle = {
+    color: '#475569',
+    fontWeight: '600',
+    fontSize: '1rem',
+    cursor: 'pointer',
+    transition: 'color 0.2s ease'
+};
+
+// --- EXISTING STYLES ---
+const sectionTitleStyle = { borderLeft: '5px solid #3b82f6', paddingLeft: '15px', color: '#1e293b', marginBottom: '30px' };
+const verticalCardStyle = { background: 'white', padding: '40px 30px', borderRadius: '20px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0', textAlign: 'center', cursor: 'pointer', position: 'relative' };
+const subCategoryCardStyle = { background: 'white', padding: '25px', borderRadius: '15px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0', textAlign: 'center', cursor: 'pointer' };
+const comingSoonBadge = { position: 'absolute', top: '20px', right: '20px', background: '#fef08a', color: '#854d0e', padding: '5px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 'bold' };
+const fileItemStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 20px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' };
+const downloadBtnStyle = { padding: '8px 20px', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', borderRadius: '6px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.9rem' };
 
 export default Home;
