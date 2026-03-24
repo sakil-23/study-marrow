@@ -19,29 +19,30 @@ function App() {
         {/* Navbar (Always Visible - Restored to your original App.css styles!) */}
         <header>
           
-          <Link to="/" className="logo" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <Link to="/" className="logo" style={{ display: 'flex', alignItems: 'center', gap: '20px', textDecoration: 'none' }}>
             <img 
               src={logo} 
               alt="SM Logo" 
               style={{ 
-                width: '55px',     // Makes the logo nice and big
-                height: '55px', 
+                width: '100px',    // 🚀 MADE THE LOGO VERY BIG (Increased from 55px to 100px)
+                height: '100px', 
                 borderRadius: '50%', 
                 transition: 'all 0.3s ease',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.1)' // Base shadow so it pops
               }}
               // The pulsing blue glow hover effect
               onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'scale(1.08)';
-                e.currentTarget.style.boxShadow = '0 0 15px rgba(59, 130, 246, 0.7)';
+                e.currentTarget.style.transform = 'scale(1.05)';
+                e.currentTarget.style.boxShadow = '0 0 25px rgba(59, 130, 246, 0.8)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = 'scale(1)';
-                e.currentTarget.style.boxShadow = 'none';
+                e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
               }}
             />
             {/* Because we are using className="logo", your App.css blinking colors will work here! */}
-            Study Marrow
+            <span>Study Marrow</span>
           </Link>
 
           {/* Navigation Links (Back to your original styling) */}
