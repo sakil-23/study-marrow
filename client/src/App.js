@@ -16,13 +16,10 @@ function App() {
     <Router>
       <div className="App">
         
-        {/* ========================================== */}
-        {/* 🆕 UPDATED GLOBAL NAVBAR (Careers Style)   */}
-        {/* ========================================== */}
-        <header style={{ padding: '10px 30px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#ffffff', borderBottom: '1px solid #e2e8f0', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+        {/* Navbar (Always Visible - Restored to your original App.css styles!) */}
+        <header>
           
-          {/* Logo & Brand Name Section */}
-          <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <Link to="/" className="logo" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <img 
               src={logo} 
               alt="SM Logo" 
@@ -43,15 +40,14 @@ function App() {
                 e.currentTarget.style.boxShadow = 'none';
               }}
             />
-            <span style={{ fontSize: '1.5rem', fontWeight: '900', color: '#0f172a', letterSpacing: '0.5px' }}>
-              STUDY MARROW
-            </span>
+            {/* Because we are using className="logo", your App.css blinking colors will work here! */}
+            Study Marrow
           </Link>
 
-          {/* Navigation Links */}
-          <nav className="nav-links" style={{ display: 'flex', gap: '25px' }}>
-            <Link to="/" style={{ textDecoration: 'none', color: '#475569', fontWeight: '700', fontSize: '1.05rem', transition: 'color 0.2s' }} onMouseEnter={(e) => e.target.style.color = '#0f172a'} onMouseLeave={(e) => e.target.style.color = '#475569'}>Home</Link>
-            <Link to="/library" style={{ textDecoration: 'none', color: '#475569', fontWeight: '700', fontSize: '1.05rem', transition: 'color 0.2s' }} onMouseEnter={(e) => e.target.style.color = '#0f172a'} onMouseLeave={(e) => e.target.style.color = '#475569'}>Library</Link> 
+          {/* Navigation Links (Back to your original styling) */}
+          <nav className="nav-links">
+            <Link to="/">Home</Link>
+            <Link to="/library">Library</Link> 
           </nav>
         </header>
 
