@@ -16,36 +16,20 @@ function App() {
     <Router>
       <div className="App">
         
-        {/* Navbar (Always Visible - Restored to your original App.css styles!) */}
-        <header>
+        {/* Navbar */}
+        <header className="responsive-header">
           
-          <Link to="/" className="logo" style={{ display: 'flex', alignItems: 'center', gap: '20px', textDecoration: 'none' }}>
+          <Link to="/" className="logo responsive-brand">
             <img 
               src={logo} 
               alt="SM Logo" 
-              style={{ 
-                width: '100px',    // 🚀 MADE THE LOGO VERY BIG (Increased from 55px to 100px)
-                height: '100px', 
-                borderRadius: '50%', 
-                transition: 'all 0.3s ease',
-                cursor: 'pointer',
-                boxShadow: '0 4px 8px rgba(0,0,0,0.1)' // Base shadow so it pops
-              }}
-              // The pulsing blue glow hover effect
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'scale(1.05)';
-                e.currentTarget.style.boxShadow = '0 0 25px rgba(59, 130, 246, 0.8)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1)';
-                e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
-              }}
+              className="responsive-logo"
             />
-            {/* Because we are using className="logo", your App.css blinking colors will work here! */}
-            <span>Study Marrow</span>
+            {/* Because we are using className="logo" on the Link, your App.css blinking colors still work here! */}
+            <span className="responsive-text">Study Marrow</span>
           </Link>
 
-          {/* Navigation Links (Back to your original styling) */}
+          {/* Navigation Links */}
           <nav className="nav-links">
             <Link to="/">Home</Link>
             <Link to="/library">Library</Link> 
@@ -60,6 +44,65 @@ function App() {
           <Route path="/library" element={<Library />} />
         </Routes>
         
+        {/* ========================================== */}
+        {/* 📱 RESPONSIVE CSS STYLES                   */}
+        {/* ========================================== */}
+        <style>{`
+          /* --- DESKTOP STYLES (Replaces your old inline styles) --- */
+          .responsive-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+          }
+
+          .responsive-brand {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            text-decoration: none;
+          }
+
+          .responsive-logo {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+          }
+
+          .responsive-logo:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 25px rgba(59, 130, 246, 0.8);
+          }
+
+          .responsive-text {
+            white-space: nowrap; /* Prevents "STUDY" and "MARROW" from splitting into two lines */
+          }
+
+          /* --- MOBILE STYLES (Fixes the squished layout on phones!) --- */
+          @media (max-width: 768px) {
+            .responsive-header {
+              flex-direction: column; /* Stacks the logo and the nav links vertically */
+              gap: 15px;
+              padding: 15px 10px;
+            }
+
+            .responsive-brand {
+              gap: 12px; /* Reduces space between the logo and text */
+            }
+
+            .responsive-logo {
+              width: 60px; /* Shrinks the giant logo for phone screens */
+              height: 60px;
+            }
+
+            .responsive-text {
+              font-size: 1.6rem; /* Shrinks the text slightly so it fits perfectly */
+            }
+          }
+        `}</style>
       </div>
     </Router>
   );
