@@ -50,8 +50,8 @@ app.use(cors({
     origin: [
         "https://study-marrow.vercel.app",
         "http://localhost:3000",
-        "https://studymarrow.com",
-        "https://www.studymarrow.com"
+        "https://studymarrow.in",
+        "https://www.studymarrow.in"
     ],
     methods: ["GET", "POST", "DELETE", "PUT"],
     credentials: true
