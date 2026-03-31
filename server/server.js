@@ -7,15 +7,16 @@ require('dotenv').config();
 const helmet = require('helmet');
 const mongoSanitize = require('express-mongo-sanitize');
 const rateLimit = require('express-rate-limit');
-const jwt = require('jsonwebtoken'); // 🆕 JSON Web Tokens
-const { body, validationResult } = require('express-validator'); // 🆕 Input Validator
+const jwt = require('jsonwebtoken'); 
+const { body, validationResult } = require('express-validator'); 
 
 // 📧 EMAIL PACKAGE
 const nodemailer = require('nodemailer');
 
-// Models
+// 🗂️ MODELS
 const Material = require('./models/Material');
 const Subscriber = require('./models/Subscriber');
+const CurrentAffair = require('./models/CurrentAffair'); // 🆕 Added Current Affairs Model
 
 const app = express();
 
@@ -78,9 +79,9 @@ app.use('/api/', apiLimiter);
 // 🗄️ DATABASE & AUTH
 // ==========================================
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "mysecretpass";
-const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_key"; // 🆕 Setup your secret in Render!
+const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_key"; 
 
-// 🆕 JWT VERIFICATION MIDDLEWARE (Replaces raw password check)
+// 🆕 JWT VERIFICATION MIDDLEWARE
 const verifyAdmin = (req, res, next) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -89,7 +90,7 @@ const verifyAdmin = (req, res, next) => {
 
     const token = authHeader.split(" ")[1];
     try {
-        jwt.verify(token, JWT_SECRET); // Ensures the keycard is real and not expired
+        jwt.verify(token, JWT_SECRET); 
         next();
     } catch (err) {
         return res.status(403).json({ message: "⛔ Access Denied: Invalid or Expired Token" });
@@ -104,7 +105,7 @@ mongoose.connect(MONGO_URI)
 app.get('/', (req, res) => res.send('Server is running and healthy! 🚀'));
 
 // ==========================================
-// 🚀 API ROUTES
+// 🚀 API ROUTES (Materials & Subscribers)
 // ==========================================
 
 // 1. GET ALL MATERIALS (Public)
@@ -127,7 +128,7 @@ app.put('/api/materials/reorder', verifyAdmin, async (req, res) => {
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// 3. ADD SUBSCRIBER (Public - 🆕 Now with Email Validation)
+// 3. ADD SUBSCRIBER (Public)
 app.post('/api/subscribe', [
     body('email').isEmail().withMessage('Must be a valid email address').normalizeEmail()
 ], async (req, res) => {
@@ -145,27 +146,24 @@ app.post('/api/subscribe', [
     } catch (err) { res.status(500).json({ message: "Server error" }); }
 });
 
-// 4. VERIFY ADMIN (🆕 Now issues a JWT Token valid for 2 hours)
+// 4. VERIFY ADMIN
 app.post('/api/verify-admin', loginLimiter, (req, res) => {
     const providedPassword = req.headers['admin-key'];
     if (providedPassword === ADMIN_PASSWORD) {
         const token = jwt.sign({ role: 'admin' }, JWT_SECRET, { expiresIn: '2h' });
-        res.json({ success: true, token }); // Send back the token!
+        res.json({ success: true, token }); 
     } else {
         res.status(403).json({ message: "⛔ Access Denied: Wrong Password" });
     }
 });
 
-
-// 5. UPLOAD MATERIAL (Protected - 🆕 Now with Strict Input Validation)
+// 5. UPLOAD MATERIAL (Protected)
 app.post('/api/upload', verifyAdmin, [
-    body('title').trim().notEmpty().escape(), // Removes HTML tags
-    body('link').isURL().withMessage("Must be a valid URL"), // Ensures it's a real link
+    body('title').trim().notEmpty().escape(), 
+    body('link').isURL().withMessage("Must be a valid URL"), 
     body('vertical').trim().notEmpty().escape(),
     body('category').trim().notEmpty().escape()
 ], async (req, res) => {
-    
-    // Check if the validator caught any bad data
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ message: "Invalid input data detected", errors: errors.array() });
 
@@ -185,42 +183,16 @@ app.post('/api/upload', verifyAdmin, [
         // ✉️ --- SEND EMAIL NOTIFICATION ---
         try {
             const subs = await Subscriber.find({}, 'email');
-            
             if (subs.length > 0 && process.env.EMAIL_USER) {
                 const bccList = subs.map(s => s.email).filter(email => email !== process.env.EMAIL_USER).join(',');
-
                 if (bccList.length > 0) {
                     const mailOptions = {
                         from: `"Study Marrow" <${process.env.EMAIL_USER}>`,
                         to: `"Study Marrow Subscribers" <noreply@studymarrow.com>`, 
                         bcc: bccList, 
                         subject: `📚 New Upload: ${title}`,
-                        html: `
-                            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
-                                <div style="background-color: #0f172a; padding: 20px; text-align: center;">
-                                    <h1 style="color: white; margin: 0;">Study Marrow</h1>
-                                </div>
-                                <div style="padding: 30px; background-color: #f8fafc;">
-                                    <h2 style="color: #1e293b; margin-top: 0;">New Material Added! 🚀</h2>
-                                    <p style="color: #475569; font-size: 16px;">We have just uploaded a new resource to help with your preparation.</p>
-                                    
-                                    <div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 20px 0;">
-                                        <p style="margin: 5px 0;"><strong>Title:</strong> ${title}</p>
-                                        <p style="margin: 5px 0;"><strong>Category:</strong> ${vertical} > ${category} ${subject ? '> ' + subject : ''}</p>
-                                        <p style="margin: 5px 0;"><strong>Type:</strong> ${resourceType}</p>
-                                    </div>
-
-                                    <div style="text-align: center; margin-top: 30px;">
-                                        <a href="${link}" style="background-color: #2563eb; color: white; padding: 12px 25px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Access Material</a>
-                                    </div>
-                                </div>
-                                <div style="text-align: center; padding: 15px; font-size: 12px; color: #94a3b8;">
-                                    You are receiving this because you subscribed to Study Marrow updates.
-                                </div>
-                            </div>
-                        `
+                        html: `<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden;"><div style="background-color: #0f172a; padding: 20px; text-align: center;"><h1 style="color: white; margin: 0;">Study Marrow</h1></div><div style="padding: 30px; background-color: #f8fafc;"><h2 style="color: #1e293b; margin-top: 0;">New Material Added! 🚀</h2><p style="color: #475569; font-size: 16px;">We have just uploaded a new resource to help with your preparation.</p><div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 20px 0;"><p style="margin: 5px 0;"><strong>Title:</strong> ${title}</p><p style="margin: 5px 0;"><strong>Category:</strong> ${vertical} > ${category} ${subject ? '> ' + subject : ''}</p><p style="margin: 5px 0;"><strong>Type:</strong> ${resourceType}</p></div><div style="text-align: center; margin-top: 30px;"><a href="${link}" style="background-color: #2563eb; color: white; padding: 12px 25px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Access Material</a></div></div><div style="text-align: center; padding: 15px; font-size: 12px; color: #94a3b8;">You are receiving this because you subscribed to Study Marrow updates.</div></div>`
                     };
-
                     transporter.sendMail(mailOptions).catch(err => console.error("Email failed:", err));
                 }
             }
@@ -230,7 +202,7 @@ app.post('/api/upload', verifyAdmin, [
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// 6. RENAME MATERIAL (Protected - 🆕 Now with Title Validation)
+// 6. RENAME MATERIAL (Protected)
 app.put('/api/materials/:id', verifyAdmin, [
     body('title').trim().notEmpty().escape()
 ], async (req, res) => {
@@ -239,11 +211,7 @@ app.put('/api/materials/:id', verifyAdmin, [
 
     try {
         const { title } = req.body;
-        const updatedMaterial = await Material.findByIdAndUpdate(
-            req.params.id, 
-            { title }, 
-            { new: true }
-        );
+        const updatedMaterial = await Material.findByIdAndUpdate(req.params.id, { title }, { new: true });
         res.json(updatedMaterial);
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
@@ -262,6 +230,52 @@ app.get('/api/subscribe', verifyAdmin, async (req, res) => {
         const subs = await Subscriber.find().sort({ dateJoined: -1 });
         res.json(subs);
     } catch (err) { res.status(500).json({ message: "Error" }); }
+});
+
+// ==========================================
+// 📰 🆕 CURRENT AFFAIRS API ROUTES
+// ==========================================
+
+// 9. GET CURRENT AFFAIRS (Public)
+app.get('/api/current-affairs', async (req, res) => {
+    try {
+        const affairs = await CurrentAffair.find().sort({ date: -1 });
+        res.json(affairs);
+    } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// 10. POST CURRENT AFFAIR (Protected)
+app.post('/api/current-affairs', verifyAdmin, [
+    body('headline').trim().notEmpty().escape(),
+    body('summary').trim().notEmpty().escape()
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ message: "Invalid input", errors: errors.array() });
+
+    try {
+        const { date, topic, headline, summary, isSpecificEvent, eventName, sourceUrl } = req.body;
+        
+        const newAffair = new CurrentAffair({
+            date: date || Date.now(),
+            topic,
+            headline,
+            summary,
+            isSpecificEvent,
+            eventName,
+            sourceUrl
+        });
+
+        await newAffair.save();
+        res.status(201).json({ message: "Current affair saved!", data: newAffair });
+    } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// 11. DELETE CURRENT AFFAIR (Protected)
+app.delete('/api/current-affairs/:id', verifyAdmin, async (req, res) => {
+    try {
+        await CurrentAffair.findByIdAndDelete(req.params.id);
+        res.json({ message: "Current affair deleted successfully" });
+    } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
 // ==========================================
