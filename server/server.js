@@ -16,7 +16,7 @@ const nodemailer = require('nodemailer');
 // 🗂️ MODELS
 const Material = require('./models/Material');
 const Subscriber = require('./models/Subscriber');
-const CurrentAffair = require('./models/CurrentAffair'); // 🆕 Added Current Affairs Model
+const CurrentAffair = require('./models/CurrentAffair');
 
 const app = express();
 
@@ -157,10 +157,11 @@ app.post('/api/verify-admin', loginLimiter, (req, res) => {
     }
 });
 
-// 5. UPLOAD MATERIAL (Protected)
+// 5. UPLOAD MATERIAL (Protected - ✅ Updated for descriptions)
 app.post('/api/upload', verifyAdmin, [
     body('title').trim().notEmpty().escape(), 
-    body('link').isURL().withMessage("Must be a valid URL"), 
+    body('link').optional({ checkFalsy: true }).isURL().withMessage("Must be a valid URL"), // ✅ Made link optional
+    body('description').optional({ checkFalsy: true }).trim().escape(), // 🆕 Added description validation
     body('vertical').trim().notEmpty().escape(),
     body('category').trim().notEmpty().escape()
 ], async (req, res) => {
@@ -168,13 +169,14 @@ app.post('/api/upload', verifyAdmin, [
     if (!errors.isEmpty()) return res.status(400).json({ message: "Invalid input data detected", errors: errors.array() });
 
     try {
-        const { vertical, title, category, subject, resourceType, link, board } = req.body;
+        // 🆕 Extract 'description' from the request
+        const { vertical, title, category, subject, resourceType, link, description, board } = req.body;
         
         const topItem = await Material.findOne({ vertical, category, subject }).sort({ order: 1 });
         const newOrder = topItem ? topItem.order - 1 : 0;
 
         const newMaterial = new Material({ 
-            vertical, title, category, subject, resourceType, link, board,
+            vertical, title, category, subject, resourceType, link, description, board, // 🆕 Added description to database save
             order: newOrder 
         });
         
@@ -233,7 +235,7 @@ app.get('/api/subscribe', verifyAdmin, async (req, res) => {
 });
 
 // ==========================================
-// 📰 🆕 CURRENT AFFAIRS API ROUTES
+// 📰 CURRENT AFFAIRS API ROUTES
 // ==========================================
 
 // 9. GET CURRENT AFFAIRS (Public)
@@ -244,22 +246,25 @@ app.get('/api/current-affairs', async (req, res) => {
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// 10. POST CURRENT AFFAIR (Protected)
+// 10. POST CURRENT AFFAIR (Protected - ✅ Updated for pdfLink)
 app.post('/api/current-affairs', verifyAdmin, [
     body('headline').trim().notEmpty().escape(),
-    body('summary').trim().notEmpty().escape()
+    body('summary').trim().notEmpty().escape(),
+    body('pdfLink').optional({ checkFalsy: true }).isURL().withMessage("Must be a valid URL") // 🆕 Added pdfLink validation
 ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ message: "Invalid input", errors: errors.array() });
 
     try {
-        const { date, topic, headline, summary, isSpecificEvent, eventName, sourceUrl } = req.body;
+        // 🆕 Extract 'pdfLink' from the request
+        const { date, topic, headline, summary, pdfLink, isSpecificEvent, eventName, sourceUrl } = req.body;
         
         const newAffair = new CurrentAffair({
             date: date || Date.now(),
             topic,
             headline,
             summary,
+            pdfLink, // 🆕 Added pdfLink to database save
             isSpecificEvent,
             eventName,
             sourceUrl
