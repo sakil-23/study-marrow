@@ -10,6 +10,7 @@ function AdminPanel() {
     // --- DATA STATE (Materials) ---
     const [vertical, setVertical] = useState('School Academics'); 
     const [link, setLink] = useState('');
+    const [description, setDescription] = useState(''); // 🆕 New Article State
     const [title, setTitle] = useState('');
     const [category, setCategory] = useState('');
     const [subject, setSubject] = useState('');
@@ -23,6 +24,7 @@ function AdminPanel() {
     const [caTopic, setCaTopic] = useState('National');
     const [caHeadline, setCaHeadline] = useState('');
     const [caSummary, setCaSummary] = useState('');
+    const [caPdfLink, setCaPdfLink] = useState(''); // 🆕 New News PDF State
     const [caIsEvent, setCaIsEvent] = useState(false);
     const [caEventName, setCaEventName] = useState('');
 
@@ -64,7 +66,7 @@ function AdminPanel() {
     const fetchData = (currentToken) => { 
         fetchMaterials(); 
         fetchSubscribers(currentToken); 
-        fetchCurrentAffairs(); // 🆕 Fetch the news feed!
+        fetchCurrentAffairs();
     };
     
     const fetchMaterials = async () => {
@@ -83,7 +85,6 @@ function AdminPanel() {
         } catch (err) { console.error("Error fetching subscribers"); }
     };
 
-    // 🆕 FETCH CURRENT AFFAIRS TEXT DATA
     const fetchCurrentAffairs = async () => {
         try {
             const res = await axios.get('https://study-marrow-api.onrender.com/api/current-affairs');
@@ -91,33 +92,33 @@ function AdminPanel() {
         } catch (err) { console.error("Error fetching current affairs", err); }
     };
 
-    // --- UPLOAD HANDLER (PDFs/Links) ---
+    // --- 📁 UPLOAD HANDLER (Academics PDFs & Articles) ---
     const handleUpload = async (e) => {
         e.preventDefault();
         let finalSubject = subject;
         let finalType = resourceType;
 
         if (vertical === 'Job Exam Preparation') return alert("⚠️ This section is under progress.");
-        if (vertical === 'Current Affairs') {
-            if (!category || !title || !link) return alert("Please fill Title, Category, and Link!");
-            finalSubject = ''; finalType = 'Current Affairs'; 
-        } else {
-            if (!category || !subject || !resourceType || !title || !link) return alert("Please fill all dropdowns!");
-            if (resourceType.includes('Papers') && !board) return alert("⚠️ Please select a Board!");
-        }
+        if (vertical === 'Current Affairs') return alert("Please use the 'Post Daily News' form below for Current Affairs!");
+        
+        if (!category || !subject || !resourceType || !title) return alert("Please fill all dropdowns!");
+        if (resourceType.includes('Papers') && !board) return alert("⚠️ Please select a Board!");
+        
+        // 🆕 Check that AT LEAST a link OR a description is provided
+        if (!link && !description) return alert("⚠️ You must provide either a PDF Link OR write an Article Description!");
 
-        const materialData = { vertical, category, subject: finalSubject, resourceType: finalType, link, board, title };
+        const materialData = { vertical, category, subject: finalSubject, resourceType: finalType, link, description, board, title };
         try {
             await axios.post('https://study-marrow-api.onrender.com/api/upload', materialData, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            alert('✅ Link Added Successfully!');
-            setTitle(''); setLink(''); setBoard(''); 
+            alert('✅ Uploaded Successfully!');
+            setTitle(''); setLink(''); setDescription(''); setBoard(''); 
             fetchMaterials(); 
         } catch (err) { alert('Upload failed'); }
     };
 
-    // 🆕 --- POST NEW CURRENT AFFAIR ONE-LINER ---
+    // 📰 --- POST NEW CURRENT AFFAIR ONE-LINER ---
     const handleAddCurrentAffair = async (e) => {
         e.preventDefault();
         if (!caHeadline || !caSummary) return alert("Headline and Summary are required!");
@@ -128,13 +129,14 @@ function AdminPanel() {
                 topic: caTopic,
                 headline: caHeadline,
                 summary: caSummary,
+                pdfLink: caPdfLink, // 🆕 Added to payload
                 isSpecificEvent: caIsEvent,
                 eventName: caEventName
             }, { headers: { Authorization: `Bearer ${token}` } });
             
             alert("📰 News One-Liner Published!");
-            setCaHeadline(''); setCaSummary(''); setCaEventName(''); setCaIsEvent(false);
-            fetchCurrentAffairs(); // Refresh the list below
+            setCaHeadline(''); setCaSummary(''); setCaPdfLink(''); setCaEventName(''); setCaIsEvent(false);
+            fetchCurrentAffairs();
         } catch (err) { alert("Failed to publish news."); }
     };
 
@@ -148,7 +150,6 @@ function AdminPanel() {
         } catch (err) { alert("Error deleting news"); }
     };
 
-    // --- EDIT & DELETE HANDLERS (Materials) ---
     const handleEdit = async (id, currentTitle) => {
         const newTitle = window.prompt("Enter the new file name:", currentTitle);
         if (!newTitle || newTitle === currentTitle) return; 
@@ -170,7 +171,6 @@ function AdminPanel() {
         } catch (err) { alert("Error deleting"); }
     };
 
-    // --- REORDER LOGIC ---
     const handleMove = async (fileToMove, direction, config) => {
         const currentList = materials.filter(m => 
             (m.vertical === config.vert || (!m.vertical && config.vert === 'School Academics')) && 
@@ -208,7 +208,6 @@ function AdminPanel() {
         );
     };
 
-    // --- LOGIN SCREEN ---
     if (!isAuthenticated) {
         return (
             <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#f1f5f9' }}>
@@ -221,17 +220,16 @@ function AdminPanel() {
         );
     }
 
-    // --- DASHBOARD ---
     return (
         <div style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto', fontFamily: 'sans-serif' }}>
             <h1 style={{ textAlign: 'center', color: '#1e293b' }}>⚡ Mega-Portal Command Center</h1>
 
-            {/* 1. PDF / LINK UPLOAD FORM */}
+            {/* 1. PDF / LINK / ARTICLE UPLOAD FORM */}
             <div style={{ background: '#f8f9fa', padding: '25px', borderRadius: '12px', marginBottom: '30px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-                <h2 style={{ marginTop: 0, color: '#2563eb', marginBottom: '20px' }}>📁 Upload PDF/Material Link</h2>
+                <h2 style={{ marginTop: 0, color: '#2563eb', marginBottom: '20px' }}>📁 Upload Academic PDF or Write Article</h2>
                 <form onSubmit={handleUpload} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                     
-                    <input type="text" placeholder="File Title (e.g. Chapter 1 Notes)" value={title} onChange={(e) => setTitle(e.target.value)} required style={inputStyle} />
+                    <input type="text" placeholder="Title (e.g. Chapter 1 Notes)" value={title} onChange={(e) => setTitle(e.target.value)} required style={inputStyle} />
                     
                     <select value={vertical} onChange={(e) => { setVertical(e.target.value); setCategory(''); setSubject(''); setResourceType(''); setBoard(''); }} style={{...inputStyle, background: '#eff6ff', fontWeight: 'bold', borderColor: '#bfdbfe'}}>
                         {Object.keys(portalData).map(v => <option key={v} value={v}>{v}</option>)}
@@ -267,9 +265,12 @@ function AdminPanel() {
                             )}
                         </div>
                     )}
-
-                    <input type="url" placeholder="Paste PDF/Drive Link here (https://...)" value={link} onChange={(e) => setLink(e.target.value)} required style={{ ...inputStyle, borderColor: '#2563eb', background: '#eff6ff' }} />
-                    <button type="submit" style={buttonStyle}>Add Link</button>
+                    
+                    {/* 🆕 The New Article / Text Input for School Academics */}
+                    <textarea placeholder="Write an article or description here... (Optional if providing a link)" value={description} onChange={(e) => setDescription(e.target.value)} style={{...inputStyle, height: '100px', resize: 'vertical', borderColor: '#8b5cf6'}} />
+                    
+                    <input type="url" placeholder="Paste PDF/Drive Link here (Optional if writing an article)" value={link} onChange={(e) => setLink(e.target.value)} style={{ ...inputStyle, borderColor: '#2563eb', background: '#eff6ff' }} />
+                    <button type="submit" style={buttonStyle}>Post Content</button>
                 </form>
             </div>
 
@@ -301,6 +302,9 @@ function AdminPanel() {
                     <input type="text" placeholder="Headline (e.g. RBI Keeps Repo Rate Unchanged)" value={caHeadline} onChange={(e) => setCaHeadline(e.target.value)} required style={inputStyle} />
                     
                     <textarea placeholder="Short Summary / Bullet Points..." value={caSummary} onChange={(e) => setCaSummary(e.target.value)} required style={{...inputStyle, height: '100px', resize: 'vertical'}} />
+                    
+                    {/* 🆕 The New PDF Link Input for News */}
+                    <input type="url" placeholder="Attach Official PDF/Notice Link (Optional)" value={caPdfLink} onChange={(e) => setCaPdfLink(e.target.value)} style={{ ...inputStyle, borderColor: '#d946ef', background: 'white' }} />
                     
                     <button type="submit" style={{...buttonStyle, background: '#d946ef'}}>Post News</button>
                 </form>
