@@ -248,8 +248,8 @@ app.get('/api/current-affairs', async (req, res) => {
 
 // 10. POST CURRENT AFFAIR (Protected - ✅ Updated for pdfLink)
 app.post('/api/current-affairs', verifyAdmin, [
-    body('headline').trim().notEmpty().escape(),
-    body('summary').trim().notEmpty().escape(),
+    body('headline').trim().notEmpty(),
+    body('summary').trim().notEmpty(),
     body('pdfLink').optional({ checkFalsy: true }).isURL().withMessage("Must be a valid URL") // 🆕 Added pdfLink validation
 ], async (req, res) => {
     const errors = validationResult(req);
