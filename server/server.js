@@ -322,21 +322,21 @@ app.post('/api/ai-rewrite', verifyAdmin, upload.single('pdfFile'), async (req, r
             }
         };
 
-        // 2. The Strict Prompt
+        // 2. The Strict Prompt (UPGRADED FOR MAX DETAIL & EXACT FORMATTING)
         const prompt = `
         Act as the Master Content Creator for Indian competitive exams.
         
         YOUR MISSION:
-        1. Read the document and extract factual news points.
+        1. Read the document and extract EVERY SINGLE factual news point. Be highly detailed and comprehensive. DO NOT summarize or skip any events.
         2. COMPLETELY REWRITE the text to avoid copyright.
         3. Remove any branding from the original author.
         
-        CRITICAL RULES:
-        - DO NOT include any conversational filler, introductions, or concluding statements (e.g., DO NOT say "Here is the guide" or "As an AI").
-        - START DIRECTLY with the first header.
-        - Format using standard Markdown: Use '### ' for headers and '-' for bullet points.
+        CRITICAL FORMATTING RULES:
+        - You MUST use EXACTLY '### ' (three hashes and a space) for the category headers. DO NOT use bold text for headers.
+        - DO NOT include any conversational filler (e.g., DO NOT say "Here is the guide").
+        - Format using standard Markdown: '-' for bullet points.
         
-        Categorize into these headers (Only include headers that have relevant news):
+        Categorize into exactly these headers (Only include headers that have relevant news):
         ### 🏛️ POLITY & GOVERNANCE
         ### 💹 ECONOMY & BANKING
         ### 🌍 INTERNATIONAL & DEFENSE
