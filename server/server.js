@@ -10,8 +10,11 @@ const rateLimit = require('express-rate-limit');
 const jwt = require('jsonwebtoken'); 
 const { body, validationResult } = require('express-validator'); 
 
-// 📧 EMAIL PACKAGE
+// 📧 EMAIL, UPLOADS, & AI PACKAGES
 const nodemailer = require('nodemailer');
+const multer = require('multer');
+const pdfParse = require('pdf-parse');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 // 🗂️ MODELS
 const Material = require('./models/Material');
@@ -22,6 +25,16 @@ const app = express();
 
 // ✅ CRITICAL FOR RENDER: Tells the rate-limiter to read the actual user's IP
 app.set('trust proxy', 1);
+
+// ==========================================
+// 🧠 AI & UPLOAD CONFIGURATION
+// ==========================================
+// Store uploaded PDFs temporarily in RAM (Memory) so we don't clutter your server
+const upload = multer({ storage: multer.memoryStorage() });
+
+// Initialize Gemini AI
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
 // ==========================================
 // 📧 EMAIL TRANSPORTER SETUP
@@ -234,7 +247,7 @@ app.get('/api/subscribe', verifyAdmin, async (req, res) => {
 });
 
 // ==========================================
-// 📰 CURRENT AFFAIRS API ROUTES (Adda247 Style!)
+// 📰 CURRENT AFFAIRS API ROUTES
 // ==========================================
 
 // 9. GET CURRENT AFFAIRS (Public)
@@ -245,8 +258,7 @@ app.get('/api/current-affairs', async (req, res) => {
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// 10. POST CURRENT AFFAIR (Protected)
-// ⚠️ NO .escape() here so the AI's formatting stays beautiful!
+// 10. POST CURRENT AFFAIR (Protected - Manual Entry)
 app.post('/api/current-affairs', verifyAdmin, [
     body('title').trim().notEmpty(), 
     body('content').trim().notEmpty(),
@@ -267,7 +279,7 @@ app.post('/api/current-affairs', verifyAdmin, [
             pdfLink 
         });
 
-        await newAffair.save(); // ✅ Fixed!
+        await newAffair.save(); 
         res.status(201).json({ message: "Study guide saved!", data: newAffair });
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
@@ -278,6 +290,70 @@ app.delete('/api/current-affairs/:id', verifyAdmin, async (req, res) => {
         await CurrentAffair.findByIdAndDelete(req.params.id);
         res.json({ message: "Current affair deleted successfully" });
     } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// ==========================================
+// 🤖 12. THE NEW AI PDF REWRITE ENGINE
+// ==========================================
+app.post('/api/ai-rewrite', verifyAdmin, upload.single('pdfFile'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ message: "No PDF file uploaded." });
+        
+        const { title, category, pdfLink } = req.body;
+        if (!title || !category) return res.status(400).json({ message: "Title and Category are required." });
+
+        console.log(`📄 Extracting text from PDF: ${req.file.originalname}`);
+        
+        // 1. Extract text from the uploaded PDF buffer
+        const pdfData = await pdfParse(req.file.buffer);
+        const rawText = pdfData.text;
+
+        console.log(`🧠 Handing ${rawText.length} characters to Gemini for rewriting...`);
+
+        // 2. The Strict Prompt to bypass copyright and reformat
+        const prompt = `
+        Act as the Master Content Creator for top-tier Indian competitive exams (UPSC, APSC, SSC, ADRE).
+        I am giving you the raw text extracted from a competitor's current affairs PDF. 
+        
+        YOUR MISSION:
+        1. Read the text and extract all factual news points.
+        2. COMPLETELY REWRITE the text in your own words. Do not copy their exact sentences (to avoid copyright).
+        3. Remove any branding, advertisements, or mentions of the original author/platform.
+        4. Format it beautifully using standard text dashes (-) for bullet points.
+        
+        Categorize the news EXACTLY into these headers:
+        🏛️ POLITY & GOVERNANCE
+        💹 ECONOMY & BANKING
+        🌍 INTERNATIONAL & DEFENSE
+        🚀 SCIENCE & ENVIRONMENT
+        🏆 AWARDS, APPOINTMENTS & SPORTS
+        🦏 ASSAM & NORTHEAST
+
+        RAW PDF TEXT:
+        ${rawText}
+        `;
+
+        // 3. Generate new content
+        const result = await aiModel.generateContent(prompt);
+        const rewrittenContent = result.response.text();
+
+        // 4. Save to Database
+        const newAffair = new CurrentAffair({
+            title: title,
+            content: rewrittenContent,
+            category: category,
+            pdfLink: pdfLink || "" 
+        });
+
+        await newAffair.save();
+        console.log(`✅ Successfully rewritten and published: ${title}`);
+        
+        res.status(201).json({ message: "AI successfully rewrote and published the PDF!", data: newAffair });
+
+    } catch (error) {
+        console.error("❌ AI Rewrite Error:", error);
+        res.status(500).json({ message: "Failed to process PDF with AI", error: error.message });
+    }
 });
 
 // ==========================================
