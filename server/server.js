@@ -13,7 +13,6 @@ const { body, validationResult } = require('express-validator');
 // 📧 EMAIL, UPLOADS, & AI PACKAGES
 const nodemailer = require('nodemailer');
 const multer = require('multer');
-const pdfParse = require('pdf-parse');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 // 🗂️ MODELS
@@ -293,7 +292,7 @@ app.delete('/api/current-affairs/:id', verifyAdmin, async (req, res) => {
 });
 
 // ==========================================
-// 🤖 12. THE NEW AI PDF REWRITE ENGINE
+// 🤖 12. THE NEW AI PDF REWRITE ENGINE (Native Gemini)
 // ==========================================
 app.post('/api/ai-rewrite', verifyAdmin, upload.single('pdfFile'), async (req, res) => {
     try {
@@ -302,39 +301,40 @@ app.post('/api/ai-rewrite', verifyAdmin, upload.single('pdfFile'), async (req, r
         const { title, category, pdfLink } = req.body;
         if (!title || !category) return res.status(400).json({ message: "Title and Category are required." });
 
-        console.log(`📄 Extracting text from PDF: ${req.file.originalname}`);
+        console.log(`📄 Formatting PDF for Gemini: ${req.file.originalname}`);
         
-        // 1. Extract text from the uploaded PDF buffer (with failsafe unwrap)
-        const parseHelper = typeof pdfParse === 'function' ? pdfParse : pdfParse.default;
-        const pdfData = await parseHelper(req.file.buffer);
+        // 1. Convert the raw PDF directly into a format Gemini can "see"
+        const pdfPart = {
+            inlineData: {
+                data: req.file.buffer.toString("base64"),
+                mimeType: "application/pdf"
+            }
+        };
 
-        console.log(`🧠 Handing ${rawText.length} characters to Gemini for rewriting...`);
-
-        // 2. The Strict Prompt to bypass copyright and reformat
+        // 2. The Strict Prompt
         const prompt = `
         Act as the Master Content Creator for top-tier Indian competitive exams (UPSC, APSC, SSC, ADRE).
-        I am giving you the raw text extracted from a competitor's current affairs PDF. 
+        I am providing you with a competitor's current affairs PDF document. 
         
         YOUR MISSION:
-        1. Read the text and extract all factual news points.
+        1. Read the document and extract all factual news points.
         2. COMPLETELY REWRITE the text in your own words. Do not copy their exact sentences (to avoid copyright).
         3. Remove any branding, advertisements, or mentions of the original author/platform.
         4. Format it beautifully using standard text dashes (-) for bullet points.
         
-        Categorize the news EXACTLY into these headers:
+        Categorize the news EXACTLY into these headers (Only include headers that have relevant news in the PDF):
         🏛️ POLITY & GOVERNANCE
         💹 ECONOMY & BANKING
         🌍 INTERNATIONAL & DEFENSE
         🚀 SCIENCE & ENVIRONMENT
         🏆 AWARDS, APPOINTMENTS & SPORTS
         🦏 ASSAM & NORTHEAST
-
-        RAW PDF TEXT:
-        ${rawText}
         `;
 
-        // 3. Generate new content
-        const result = await aiModel.generateContent(prompt);
+        console.log(`🧠 Handing PDF directly to Gemini AI...`);
+
+        // 3. Hand BOTH the prompt and the PDF file to Gemini
+        const result = await aiModel.generateContent([prompt, pdfPart]);
         const rewrittenContent = result.response.text();
 
         // 4. Save to Database
