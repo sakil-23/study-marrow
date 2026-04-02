@@ -267,7 +267,7 @@ app.post('/api/current-affairs', verifyAdmin, [
             pdfLink 
         });
 
-        await save();
+        await newAffair.save(); // ✅ Fixed!
         res.status(201).json({ message: "Study guide saved!", data: newAffair });
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
