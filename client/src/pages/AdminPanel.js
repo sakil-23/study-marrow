@@ -19,13 +19,14 @@ function AdminPanel() {
     const [materials, setMaterials] = useState([]); 
     const [subscribers, setSubscribers] = useState([]);
 
-    // 🤖 --- DATA STATE (AI PDF Engine) ---
+    // 🤖 --- DATA STATE (AI PDF Engine & Editing) ---
     const [currentAffairs, setCurrentAffairs] = useState([]);
     const [caTitle, setCaTitle] = useState(''); 
     const [caCategory, setCaCategory] = useState('Weekly Current Affairs'); 
     const [caPdfLink, setCaPdfLink] = useState('');
-    const [caPdfFile, setCaPdfFile] = useState(null); // 👈 Holds the actual uploaded file
-    const [isRewriting, setIsRewriting] = useState(false); // 👈 Loading state for the AI
+    const [caPdfFile, setCaPdfFile] = useState(null); 
+    const [isRewriting, setIsRewriting] = useState(false); 
+    const [editingCA, setEditingCA] = useState(null); // 👈 NEW: Holds the guide being edited
 
     // --- 🏗️ THE MEGA-PORTAL STRUCTURE ---
     const portalData = {
@@ -121,7 +122,7 @@ function AdminPanel() {
         e.preventDefault();
         if (!caTitle || !caPdfFile) return alert("Title and a PDF file are required!");
 
-        setIsRewriting(true); // Turns on the loading button
+        setIsRewriting(true); 
 
         const formData = new FormData();
         formData.append('pdfFile', caPdfFile);
@@ -145,8 +146,22 @@ function AdminPanel() {
             console.error(err);
             alert("❌ Failed to process PDF. It might be too large, or the AI timed out."); 
         } finally {
-            setIsRewriting(false); // Turns off the loading button
+            setIsRewriting(false); 
         }
+    };
+
+    // 📝 --- NEW: SAVE EDITED CURRENT AFFAIR ---
+    const handleSaveCAEdit = async () => {
+        try {
+            await axios.put(`https://study-marrow-api.onrender.com/api/current-affairs/${editingCA._id}`, {
+                title: editingCA.title,
+                content: editingCA.content
+            }, { headers: { Authorization: `Bearer ${token}` } });
+            
+            alert("✅ Edit saved successfully!");
+            setEditingCA(null); // Close modal
+            fetchCurrentAffairs(); // Refresh list
+        } catch (err) { alert("❌ Failed to save edit."); }
     };
 
     const handleDeleteCA = async (id) => {
@@ -297,7 +312,6 @@ function AdminPanel() {
 
                     <input type="text" placeholder="Title (e.g. Weekly Compilation: 15 March – 21 March 2026)" value={caTitle} onChange={(e) => setCaTitle(e.target.value)} required style={inputStyle} disabled={isRewriting}/>
                     
-                    {/* The new File Input for the PDF */}
                     <div style={{ background: 'white', padding: '15px', borderRadius: '6px', border: '1px dashed #d946ef' }}>
                         <label style={{ display: 'block', marginBottom: '10px', color: '#475569', fontWeight: 'bold' }}>📄 Upload Competitor PDF Here:</label>
                         <input type="file" id="pdfFileInput" accept="application/pdf" onChange={(e) => setCaPdfFile(e.target.files[0])} required disabled={isRewriting} />
@@ -305,7 +319,6 @@ function AdminPanel() {
                     
                     <input type="url" placeholder="Attach Official PDF Link (Optional)" value={caPdfLink} onChange={(e) => setCaPdfLink(e.target.value)} style={{ ...inputStyle, borderColor: '#d946ef', background: 'white' }} disabled={isRewriting} />
                     
-                    {/* The Dynamic Loading Button */}
                     <button type="submit" disabled={isRewriting} style={{...buttonStyle, background: isRewriting ? '#fbcfe8' : '#d946ef', color: isRewriting ? '#a21caf' : 'white', cursor: isRewriting ? 'wait' : 'pointer'}}>
                         {isRewriting ? "🤖 AI is reading & rewriting (Please wait 10-20 seconds)..." : "⚡ Process PDF & Publish"}
                     </button>
@@ -313,7 +326,7 @@ function AdminPanel() {
                 </form>
             </div>
 
-            {/* 3. CURRENT AFFAIRS DATABASE VIEW */}
+            {/* 3. CURRENT AFFAIRS DATABASE VIEW (WITH EDIT BUTTON!) */}
             <div style={{ background: '#fff', padding: '20px', borderRadius: '10px', border: '1px solid #ddd', marginBottom: '30px' }}>
                 <h3 style={{ marginTop: 0, color: '#d946ef', borderBottom: '2px solid #d946ef', paddingBottom: '10px' }}>
                     🗞️ Recent Study Guides ({currentAffairs.length})
@@ -329,7 +342,11 @@ function AdminPanel() {
                                             <h4 style={{ margin: '5px 0 2px 0', color: '#1e293b' }}>{ca.title}</h4>
                                             <small style={{ color: '#64748b' }}>{new Date(ca.date).toLocaleDateString()}</small>
                                         </div>
-                                        <button onClick={() => handleDeleteCA(ca._id)} style={miniDeleteBtn}>🗑</button>
+                                        <div style={{display: 'flex', gap: '5px'}}>
+                                            {/* 👈 NEW EDIT BUTTON HERE */}
+                                            <button onClick={() => setEditingCA(ca)} style={miniEditBtn}>✎</button> 
+                                            <button onClick={() => handleDeleteCA(ca._id)} style={miniDeleteBtn}>🗑</button>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -420,6 +437,34 @@ function AdminPanel() {
                     </div>
                 ))}
             </div>
+
+            {/* 📝 THE NEW EDIT MODAL POP-UP */}
+            {editingCA && (
+                <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+                    <div style={{ background: 'white', padding: '30px', borderRadius: '12px', width: '90%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+                        <h2 style={{ marginTop: 0, color: '#2563eb' }}>✎ Edit Study Guide</h2>
+                        
+                        <input 
+                            type="text" 
+                            value={editingCA.title} 
+                            onChange={(e) => setEditingCA({...editingCA, title: e.target.value})} 
+                            style={{...inputStyle, marginBottom: '15px', fontWeight: 'bold'}} 
+                        />
+                        
+                        <textarea 
+                            value={editingCA.content} 
+                            onChange={(e) => setEditingCA({...editingCA, content: e.target.value})} 
+                            style={{...inputStyle, height: '400px', resize: 'vertical', fontFamily: 'monospace', marginBottom: '15px'}} 
+                        />
+                        
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <button onClick={handleSaveCAEdit} style={{...buttonStyle, background: '#16a34a', flex: 1}}>Save Changes</button>
+                            <button onClick={() => setEditingCA(null)} style={{...buttonStyle, background: '#64748b', flex: 1}}>Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 }

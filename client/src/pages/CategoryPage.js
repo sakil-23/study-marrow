@@ -1,3 +1,4 @@
+import ReactMarkdown from 'react-markdown';
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
@@ -69,8 +70,6 @@ function CategoryPage() {
 
   // --- 📰 FILTER CURRENT AFFAIRS (Simplified for the Magazine Layout!) ---
   const getFilteredNews = () => {
-      // Because we now save the category directly to the DB, 
-      // we just filter by matching the database category to the URL!
       return currentAffairs.filter(news => news.category === categoryName);
   };
 
@@ -154,10 +153,10 @@ function CategoryPage() {
                               {news.title}
                           </summary>
                           
-                          {/* The Expanded Content Area */}
+                          {/* The Expanded Content Area with ReactMarkdown */}
                           <div style={accordionContentStyle}>
-                              {/* Content output with pre-wrap to respect AI bullet points */}
-                              {news.content}
+                              
+                              <ReactMarkdown>{news.content}</ReactMarkdown>
                               
                               {/* Show the PDF button ONLY if a link was manually provided */}
                               {news.pdfLink && (
@@ -302,7 +301,7 @@ function CategoryPage() {
 // --- SHARED STYLES ---
 const cardStyle = { background: 'white', padding: '30px', borderRadius: '15px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', textAlign: 'center', cursor: 'pointer', border: '1px solid #e2e8f0', transition: 'transform 0.2s' };
 const backButtonStyle = { background: 'none', border: 'none', color: '#6366f1', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem', padding: 0 };
-const downloadButtonStyle = { textDecoration: 'none', background: '#3b82f6', color: 'white', padding: '10px 20px', borderRadius: '5px', fontSize: '0.9rem', fontWeight: 'bold' };
+const downloadButtonStyle = { textDecoration: 'none', background: '#3b82f6', color: 'white', padding: '10px 20px', borderRadius: '5px', fontSize: '0.9rem', fontWeight: 'bold', display: 'inline-block' };
 
 // --- 🆕 NEW ACCORDION STYLES (ExamCharcha Style) ---
 const accordionStyle = { 
@@ -324,7 +323,7 @@ const accordionSummaryStyle = {
 };
 const accordionContentStyle = { 
     padding: '25px', 
-    whiteSpace: 'pre-wrap', // crucial for rendering AI line breaks
+    // Removed whiteSpace: 'pre-wrap' because ReactMarkdown handles formatting naturally!
     lineHeight: '1.8', 
     color: '#334155', 
     borderTop: '1px solid #e2e8f0',
