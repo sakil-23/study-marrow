@@ -6,31 +6,22 @@ const currentAffairSchema = new mongoose.Schema({
         required: true, 
         default: Date.now 
     },
-    topic: { 
+    title: { 
         type: String, 
-        enum: ['National', 'Assam', 'International', 'Sports', 'Appointments', 'Other'], 
-        default: 'National' 
+        required: true // e.g., "Weekly One Liners: 15 March – 21 March 2026"
     },
-    headline: { 
+    content: { 
         type: String, 
-        required: true 
+        required: true // The massive AI-generated study guide goes here
     },
-    summary: { 
+    category: { 
         type: String, 
-        required: true 
+        required: true,
+        enum: ['Weekly Current Affairs', 'Monthly Current Affairs', 'Specific Event Current Affairs']
     },
-    // 🆕 This allows you to optionally attach an official PDF notice to the news!
     pdfLink: { 
         type: String, 
-        required: false 
-    }, 
-    isSpecificEvent: { 
-        type: Boolean, 
-        default: false 
-    },
-    eventName: { 
-        type: String, 
-        required: function() { return this.isSpecificEvent; } 
+        required: false // Only used if you manually upload a literal PDF
     }
 }, { timestamps: true });
 

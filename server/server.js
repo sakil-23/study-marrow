@@ -157,11 +157,11 @@ app.post('/api/verify-admin', loginLimiter, (req, res) => {
     }
 });
 
-// 5. UPLOAD MATERIAL (Protected - ✅ Updated for descriptions)
+// 5. UPLOAD MATERIAL (Protected)
 app.post('/api/upload', verifyAdmin, [
     body('title').trim().notEmpty().escape(), 
-    body('link').optional({ checkFalsy: true }).isURL().withMessage("Must be a valid URL"), // ✅ Made link optional
-    body('description').optional({ checkFalsy: true }).trim().escape(), // 🆕 Added description validation
+    body('link').optional({ checkFalsy: true }).isURL().withMessage("Must be a valid URL"), 
+    body('description').optional({ checkFalsy: true }).trim().escape(), 
     body('vertical').trim().notEmpty().escape(),
     body('category').trim().notEmpty().escape()
 ], async (req, res) => {
@@ -169,14 +169,13 @@ app.post('/api/upload', verifyAdmin, [
     if (!errors.isEmpty()) return res.status(400).json({ message: "Invalid input data detected", errors: errors.array() });
 
     try {
-        // 🆕 Extract 'description' from the request
         const { vertical, title, category, subject, resourceType, link, description, board } = req.body;
         
         const topItem = await Material.findOne({ vertical, category, subject }).sort({ order: 1 });
         const newOrder = topItem ? topItem.order - 1 : 0;
 
         const newMaterial = new Material({ 
-            vertical, title, category, subject, resourceType, link, description, board, // 🆕 Added description to database save
+            vertical, title, category, subject, resourceType, link, description, board, 
             order: newOrder 
         });
         
@@ -235,7 +234,7 @@ app.get('/api/subscribe', verifyAdmin, async (req, res) => {
 });
 
 // ==========================================
-// 📰 CURRENT AFFAIRS API ROUTES
+// 📰 CURRENT AFFAIRS API ROUTES (Adda247 Style!)
 // ==========================================
 
 // 9. GET CURRENT AFFAIRS (Public)
@@ -246,32 +245,30 @@ app.get('/api/current-affairs', async (req, res) => {
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// 10. POST CURRENT AFFAIR (Protected - ✅ Updated for pdfLink)
+// 10. POST CURRENT AFFAIR (Protected)
+// ⚠️ NO .escape() here so the AI's formatting stays beautiful!
 app.post('/api/current-affairs', verifyAdmin, [
-    body('headline').trim().notEmpty(),
-    body('summary').trim().notEmpty(),
-    body('pdfLink').optional({ checkFalsy: true }).isURL().withMessage("Must be a valid URL") // 🆕 Added pdfLink validation
+    body('title').trim().notEmpty(), 
+    body('content').trim().notEmpty(),
+    body('category').trim().notEmpty(),
+    body('pdfLink').optional({ checkFalsy: true }).isURL().withMessage("Must be a valid URL")
 ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ message: "Invalid input", errors: errors.array() });
 
     try {
-        // 🆕 Extract 'pdfLink' from the request
-        const { date, topic, headline, summary, pdfLink, isSpecificEvent, eventName, sourceUrl } = req.body;
+        const { date, title, content, category, pdfLink } = req.body;
         
         const newAffair = new CurrentAffair({
             date: date || Date.now(),
-            topic,
-            headline,
-            summary,
-            pdfLink, // 🆕 Added pdfLink to database save
-            isSpecificEvent,
-            eventName,
-            sourceUrl
+            title,
+            content,
+            category,
+            pdfLink 
         });
 
-        await newAffair.save();
-        res.status(201).json({ message: "Current affair saved!", data: newAffair });
+        await save();
+        res.status(201).json({ message: "Study guide saved!", data: newAffair });
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
