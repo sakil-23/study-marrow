@@ -67,28 +67,11 @@ function CategoryPage() {
     }
   }, [categoryName, isCurrentAffairs]);
 
-  // --- 📰 FILTER CURRENT AFFAIRS (The Scrollable Feed Logic) ---
+  // --- 📰 FILTER CURRENT AFFAIRS (Simplified for the Magazine Layout!) ---
   const getFilteredNews = () => {
-      const now = new Date();
-      return currentAffairs.filter(news => {
-          const newsDate = new Date(news.date);
-          
-          if (categoryName === 'Weekly Current Affairs') {
-              // Show only news from the last 7 days
-              const sevenDaysAgo = new Date();
-              sevenDaysAgo.setDate(now.getDate() - 7);
-              return newsDate >= sevenDaysAgo;
-          } 
-          if (categoryName === 'Monthly Current Affairs') {
-              // Show only news from the current month and year
-              return newsDate.getMonth() === now.getMonth() && newsDate.getFullYear() === now.getFullYear();
-          }
-          if (categoryName === 'Specific Event Current Affairs') {
-              // Show only events marked as specific
-              return news.isSpecificEvent === true;
-          }
-          return true;
-      });
+      // Because we now save the category directly to the DB, 
+      // we just filter by matching the database category to the URL!
+      return currentAffairs.filter(news => news.category === categoryName);
   };
 
   // --- 📄 FILTER SCHOOL MATERIALS (The PDF & Article Logic) ---
@@ -147,33 +130,46 @@ function CategoryPage() {
       </h1>
 
       {/* ================================================================= */}
-      {/* 📰 CURRENT AFFAIRS VIEW (Scrollable Text Feed + Optional PDF)       */}
+      {/* 📰 CURRENT AFFAIRS VIEW (Adda247 / ExamCharcha Accordion Style)   */}
       {/* ================================================================= */}
       {isCurrentAffairs && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              
+              <p style={{ color: '#64748b', marginBottom: '10px' }}>
+                  Stay informed with the latest {categoryName.toLowerCase()}, crucial for your competitive exam preparation.
+              </p>
+
               {getFilteredNews().length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '40px', background: '#f8fafc', borderRadius: '10px', color: '#64748b' }}>
                       <span style={{ fontSize: '3rem' }}>🗞️</span>
-                      <h3>No updates found for this timeframe yet.</h3>
+                      <h3>No study guides uploaded yet.</h3>
                   </div>
               ) : (
                   getFilteredNews().map(news => (
-                      <div key={news._id} style={newsCardStyle}>
-                          <div style={{ display: 'flex', gap: '10px', marginBottom: '10px', flexWrap: 'wrap' }}>
-                              <span style={tagStyle}>{news.topic}</span>
-                              {news.isSpecificEvent && <span style={eventTagStyle}>{news.eventName}</span>}
-                              <span style={dateStyle}>{new Date(news.date).toLocaleDateString()}</span>
+                      <details key={news._id} style={accordionStyle}>
+                          
+                          {/* The Clickable Title */}
+                          <summary style={accordionSummaryStyle}>
+                              <span style={{ marginRight: '10px', color: '#2563eb' }}>➡️</span>
+                              {news.title}
+                          </summary>
+                          
+                          {/* The Expanded Content Area */}
+                          <div style={accordionContentStyle}>
+                              {/* Content output with pre-wrap to respect AI bullet points */}
+                              {news.content}
+                              
+                              {/* Show the PDF button ONLY if a link was manually provided */}
+                              {news.pdfLink && (
+                                  <div style={{ marginTop: '25px' }}>
+                                      <a href={news.pdfLink} target="_blank" rel="noreferrer" style={downloadButtonStyle}>
+                                          📄 View Official PDF
+                                      </a>
+                                  </div>
+                              )}
                           </div>
-                          <h2 style={{ margin: '0 0 10px 0', color: '#0f172a' }}>{news.headline}</h2>
-                          
-                          {/* Use whiteSpace: 'pre-wrap' so bullet points and line breaks from your text area look nice */}
-                          <p style={{ margin: '0 0 15px 0', color: '#475569', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{news.summary}</p>
-                          
-                          {/* 🆕 Render the PDF Link Button ONLY if you provided one in the Admin Panel */}
-                          {news.pdfLink && (
-                              <a href={news.pdfLink} target="_blank" rel="noreferrer" style={{...downloadButtonStyle, display: 'inline-block', background: '#d946ef'}}>📄 View Official PDF</a>
-                          )}
-                      </div>
+
+                      </details>
                   ))
               )}
           </div>
@@ -262,7 +258,7 @@ function CategoryPage() {
                             </div>
                         </div>
                      ) : (
-                        /* 🆕 STANDARD FILE & ARTICLE LIST */
+                        /* STANDARD FILE & ARTICLE LIST */
                         <div style={{ display: 'grid', gap: '20px' }}>
                             {currentFiles.length === 0 ? (
                                 <p style={{ color: '#666' }}>No content found here yet.</p>
@@ -270,7 +266,6 @@ function CategoryPage() {
                                 currentFiles.map((file) => (
                                 <div key={file._id} style={{ background: 'white', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', border: '1px solid #e2e8f0' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: file.description ? '15px' : '0' }}>
-                                        {/* Icon changes dynamically if it's an article vs a PDF */}
                                         <div style={{ fontSize: '1.8rem' }}>{file.description ? '✍️' : '📄'}</div>
                                         
                                         <div style={{ flex: 1 }}>
@@ -280,13 +275,11 @@ function CategoryPage() {
                                             </small>
                                         </div>
                                         
-                                        {/* 🆕 Render PDF Link Button ONLY if you provided a link in the Admin Panel */}
                                         {file.link && (
                                             <a href={file.link} target="_blank" rel="noreferrer" style={downloadButtonStyle}>View PDF</a>
                                         )}
                                     </div>
                                     
-                                    {/* 🆕 If you wrote an article/description, render it neatly below the title! */}
                                     {file.description && (
                                         <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #3b82f6', color: '#334155', whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
                                             {file.description}
@@ -306,15 +299,36 @@ function CategoryPage() {
   );
 }
 
-// Styles
+// --- SHARED STYLES ---
 const cardStyle = { background: 'white', padding: '30px', borderRadius: '15px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', textAlign: 'center', cursor: 'pointer', border: '1px solid #e2e8f0', transition: 'transform 0.2s' };
 const backButtonStyle = { background: 'none', border: 'none', color: '#6366f1', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem', padding: 0 };
 const downloadButtonStyle = { textDecoration: 'none', background: '#3b82f6', color: 'white', padding: '10px 20px', borderRadius: '5px', fontSize: '0.9rem', fontWeight: 'bold' };
 
-// 🆕 Styles specifically for the new Text Feed
-const newsCardStyle = { background: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', borderLeft: '5px solid #d946ef' };
-const tagStyle = { background: '#f3e8ff', color: '#7e22ce', padding: '4px 10px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' };
-const eventTagStyle = { background: '#fce7f3', color: '#be185d', padding: '4px 10px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' };
-const dateStyle = { color: '#94a3b8', fontSize: '0.9rem', display: 'flex', alignItems: 'center' };
+// --- 🆕 NEW ACCORDION STYLES (ExamCharcha Style) ---
+const accordionStyle = { 
+    background: 'white', 
+    borderRadius: '8px', 
+    border: '1px solid #e2e8f0', 
+    boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+    overflow: 'hidden'
+};
+const accordionSummaryStyle = { 
+    padding: '18px 20px', 
+    cursor: 'pointer', 
+    fontWeight: 'bold', 
+    fontSize: '1.1rem', 
+    color: '#1e293b', 
+    background: '#f8fafc',
+    display: 'flex',
+    alignItems: 'center'
+};
+const accordionContentStyle = { 
+    padding: '25px', 
+    whiteSpace: 'pre-wrap', // crucial for rendering AI line breaks
+    lineHeight: '1.8', 
+    color: '#334155', 
+    borderTop: '1px solid #e2e8f0',
+    fontSize: '1rem'
+};
 
 export default CategoryPage;

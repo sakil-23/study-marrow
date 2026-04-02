@@ -10,7 +10,7 @@ function AdminPanel() {
     // --- DATA STATE (Materials) ---
     const [vertical, setVertical] = useState('School Academics'); 
     const [link, setLink] = useState('');
-    const [description, setDescription] = useState(''); // 🆕 New Article State
+    const [description, setDescription] = useState(''); 
     const [title, setTitle] = useState('');
     const [category, setCategory] = useState('');
     const [subject, setSubject] = useState('');
@@ -19,14 +19,12 @@ function AdminPanel() {
     const [materials, setMaterials] = useState([]); 
     const [subscribers, setSubscribers] = useState([]);
 
-    // 🆕 --- DATA STATE (Current Affairs Text Feed) ---
+    // 🆕 --- DATA STATE (Current Affairs Mega-Article) ---
     const [currentAffairs, setCurrentAffairs] = useState([]);
-    const [caTopic, setCaTopic] = useState('National');
-    const [caHeadline, setCaHeadline] = useState('');
-    const [caSummary, setCaSummary] = useState('');
-    const [caPdfLink, setCaPdfLink] = useState(''); // 🆕 New News PDF State
-    const [caIsEvent, setCaIsEvent] = useState(false);
-    const [caEventName, setCaEventName] = useState('');
+    const [caTitle, setCaTitle] = useState(''); // 👈 Replaced headline
+    const [caContent, setCaContent] = useState(''); // 👈 Replaced summary
+    const [caCategory, setCaCategory] = useState('Weekly Current Affairs'); // 👈 Replaced topic/events
+    const [caPdfLink, setCaPdfLink] = useState('');
 
     // --- 🏗️ THE MEGA-PORTAL STRUCTURE ---
     const portalData = {
@@ -99,12 +97,11 @@ function AdminPanel() {
         let finalType = resourceType;
 
         if (vertical === 'Job Exam Preparation') return alert("⚠️ This section is under progress.");
-        if (vertical === 'Current Affairs') return alert("Please use the 'Post Daily News' form below for Current Affairs!");
+        if (vertical === 'Current Affairs') return alert("Please use the 'Post Study Guide' form below for Current Affairs!");
         
         if (!category || !subject || !resourceType || !title) return alert("Please fill all dropdowns!");
         if (resourceType.includes('Papers') && !board) return alert("⚠️ Please select a Board!");
         
-        // 🆕 Check that AT LEAST a link OR a description is provided
         if (!link && !description) return alert("⚠️ You must provide either a PDF Link OR write an Article Description!");
 
         const materialData = { vertical, category, subject: finalSubject, resourceType: finalType, link, description, board, title };
@@ -118,30 +115,27 @@ function AdminPanel() {
         } catch (err) { alert('Upload failed'); }
     };
 
-    // 📰 --- POST NEW CURRENT AFFAIR ONE-LINER ---
+    // 📰 --- POST NEW CURRENT AFFAIR STUDY GUIDE ---
     const handleAddCurrentAffair = async (e) => {
         e.preventDefault();
-        if (!caHeadline || !caSummary) return alert("Headline and Summary are required!");
-        if (caIsEvent && !caEventName) return alert("Please enter the specific event name!");
+        if (!caTitle || !caContent) return alert("Title and Content are required!");
 
         try {
             await axios.post('https://study-marrow-api.onrender.com/api/current-affairs', {
-                topic: caTopic,
-                headline: caHeadline,
-                summary: caSummary,
-                pdfLink: caPdfLink, // 🆕 Added to payload
-                isSpecificEvent: caIsEvent,
-                eventName: caEventName
+                title: caTitle,
+                content: caContent,
+                category: caCategory,
+                pdfLink: caPdfLink
             }, { headers: { Authorization: `Bearer ${token}` } });
             
-            alert("📰 News One-Liner Published!");
-            setCaHeadline(''); setCaSummary(''); setCaPdfLink(''); setCaEventName(''); setCaIsEvent(false);
+            alert("📰 Study Guide Published!");
+            setCaTitle(''); setCaContent(''); setCaPdfLink(''); setCaCategory('Weekly Current Affairs');
             fetchCurrentAffairs();
         } catch (err) { alert("Failed to publish news."); }
     };
 
     const handleDeleteCA = async (id) => {
-        if (!window.confirm("Delete this news update?")) return;
+        if (!window.confirm("Delete this Study Guide?")) return;
         try {
             await axios.delete(`https://study-marrow-api.onrender.com/api/current-affairs/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -266,7 +260,6 @@ function AdminPanel() {
                         </div>
                     )}
                     
-                    {/* 🆕 The New Article / Text Input for School Academics */}
                     <textarea placeholder="Write an article or description here... (Optional if providing a link)" value={description} onChange={(e) => setDescription(e.target.value)} style={{...inputStyle, height: '100px', resize: 'vertical', borderColor: '#8b5cf6'}} />
                     
                     <input type="url" placeholder="Paste PDF/Drive Link here (Optional if writing an article)" value={link} onChange={(e) => setLink(e.target.value)} style={{ ...inputStyle, borderColor: '#2563eb', background: '#eff6ff' }} />
@@ -274,57 +267,41 @@ function AdminPanel() {
                 </form>
             </div>
 
-            {/* 🆕 2. DAILY NEWS TEXT FORM */}
+            {/* 🆕 2. POST STUDY GUIDE / CURRENT AFFAIRS FORM */}
             <div style={{ background: '#fdf4ff', padding: '25px', borderRadius: '12px', marginBottom: '30px', border: '1px solid #fbcfe8', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-                <h2 style={{ marginTop: 0, color: '#d946ef', marginBottom: '20px' }}>📰 Post Daily News One-Liner</h2>
+                <h2 style={{ marginTop: 0, color: '#d946ef', marginBottom: '20px' }}>📰 Post Study Guide / Current Affairs</h2>
                 <form onSubmit={handleAddCurrentAffair} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                     
-                    <div style={{ display: 'flex', gap: '15px' }}>
-                        <select value={caTopic} onChange={(e) => setCaTopic(e.target.value)} style={{...inputStyle, flex: 1}}>
-                            <option value="National">National</option>
-                            <option value="Assam">Assam</option>
-                            <option value="International">International</option>
-                            <option value="Sports">Sports</option>
-                            <option value="Appointments">Appointments</option>
-                            <option value="Other">Other</option>
-                        </select>
+                    <select value={caCategory} onChange={(e) => setCaCategory(e.target.value)} style={{...inputStyle, background: 'white'}} required>
+                        <option value="Weekly Current Affairs">Weekly Current Affairs</option>
+                        <option value="Monthly Current Affairs">Monthly Current Affairs</option>
+                        <option value="Specific Event Current Affairs">Specific Event</option>
+                    </select>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'white', padding: '0 15px', borderRadius: '6px', border: '1px solid #ccc' }}>
-                            <input type="checkbox" id="caEvent" checked={caIsEvent} onChange={(e) => setCaIsEvent(e.target.checked)} />
-                            <label htmlFor="caEvent" style={{ fontSize: '0.9rem', color: '#475569', cursor: 'pointer' }}>Specific Event?</label>
-                        </div>
-                    </div>
-
-                    {caIsEvent && (
-                        <input type="text" placeholder="Event Name (e.g. Union Budget 2026)" value={caEventName} onChange={(e) => setCaEventName(e.target.value)} style={{...inputStyle, borderColor: '#d946ef', background: 'white'}} required />
-                    )}
-
-                    <input type="text" placeholder="Headline (e.g. RBI Keeps Repo Rate Unchanged)" value={caHeadline} onChange={(e) => setCaHeadline(e.target.value)} required style={inputStyle} />
+                    <input type="text" placeholder="Title (e.g. Weekly One Liners: 15 March – 21 March 2026)" value={caTitle} onChange={(e) => setCaTitle(e.target.value)} required style={inputStyle} />
                     
-                    <textarea placeholder="Short Summary / Bullet Points..." value={caSummary} onChange={(e) => setCaSummary(e.target.value)} required style={{...inputStyle, height: '100px', resize: 'vertical'}} />
+                    <textarea placeholder="Paste the compiled study guide content here..." value={caContent} onChange={(e) => setCaContent(e.target.value)} required style={{...inputStyle, height: '200px', resize: 'vertical'}} />
                     
-                    {/* 🆕 The New PDF Link Input for News */}
-                    <input type="url" placeholder="Attach Official PDF/Notice Link (Optional)" value={caPdfLink} onChange={(e) => setCaPdfLink(e.target.value)} style={{ ...inputStyle, borderColor: '#d946ef', background: 'white' }} />
+                    <input type="url" placeholder="Attach Official PDF Link (Optional)" value={caPdfLink} onChange={(e) => setCaPdfLink(e.target.value)} style={{ ...inputStyle, borderColor: '#d946ef', background: 'white' }} />
                     
-                    <button type="submit" style={{...buttonStyle, background: '#d946ef'}}>Post News</button>
+                    <button type="submit" style={{...buttonStyle, background: '#d946ef'}}>Publish Study Guide</button>
                 </form>
             </div>
 
             {/* 🆕 3. CURRENT AFFAIRS DATABASE VIEW */}
             <div style={{ background: '#fff', padding: '20px', borderRadius: '10px', border: '1px solid #ddd', marginBottom: '30px' }}>
                 <h3 style={{ marginTop: 0, color: '#d946ef', borderBottom: '2px solid #d946ef', paddingBottom: '10px' }}>
-                    🗞️ Recent News Posts ({currentAffairs.length})
+                    🗞️ Recent Study Guides ({currentAffairs.length})
                 </h3>
                 <div style={{ maxHeight: '250px', overflowY: 'auto' }}>
-                    {currentAffairs.length === 0 ? <p>No news posted yet.</p> : (
+                    {currentAffairs.length === 0 ? <p>No guides posted yet.</p> : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             {currentAffairs.map(ca => (
                                 <div key={ca._id} style={{ padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px', background: '#f8fafc' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                         <div>
-                                            <span style={{ fontSize: '0.8rem', background: '#e0e7ff', color: '#3730a3', padding: '2px 6px', borderRadius: '4px', marginRight: '8px' }}>{ca.topic}</span>
-                                            {ca.isSpecificEvent && <span style={{ fontSize: '0.8rem', background: '#fce7f3', color: '#be185d', padding: '2px 6px', borderRadius: '4px' }}>{ca.eventName}</span>}
-                                            <h4 style={{ margin: '5px 0 2px 0', color: '#1e293b' }}>{ca.headline}</h4>
+                                            <span style={{ fontSize: '0.8rem', background: '#e0e7ff', color: '#3730a3', padding: '2px 6px', borderRadius: '4px', marginRight: '8px' }}>{ca.category}</span>
+                                            <h4 style={{ margin: '5px 0 2px 0', color: '#1e293b' }}>{ca.title}</h4>
                                             <small style={{ color: '#64748b' }}>{new Date(ca.date).toLocaleDateString()}</small>
                                         </div>
                                         <button onClick={() => handleDeleteCA(ca._id)} style={miniDeleteBtn}>🗑</button>
