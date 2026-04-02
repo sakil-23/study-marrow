@@ -1,4 +1,5 @@
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
@@ -48,12 +49,10 @@ function CategoryPage() {
   const isPapersFolder = selectedType === 'Previous Year Papers' || selectedType === 'Previous Year Paper';
 
   useEffect(() => {
-    // Reset all navigation on category change
     setSelectedSubject(null);
     setSelectedType(null);
     setSelectedBoard(null);
 
-    // FETCH SPLIT: Get the right data based on what page we are on
     if (isCurrentAffairs) {
         axios.get('https://study-marrow-api.onrender.com/api/current-affairs')
           .then(res => setCurrentAffairs(res.data))
@@ -68,12 +67,10 @@ function CategoryPage() {
     }
   }, [categoryName, isCurrentAffairs]);
 
-  // --- 📰 FILTER CURRENT AFFAIRS (Simplified for the Magazine Layout!) ---
   const getFilteredNews = () => {
       return currentAffairs.filter(news => news.category === categoryName);
   };
 
-  // --- 📄 FILTER SCHOOL MATERIALS (The PDF & Article Logic) ---
   const currentFiles = materials.filter(item => {
     if (selectedSubject && item.subject !== selectedSubject) return false;
     if (selectedType) {
@@ -87,6 +84,29 @@ function CategoryPage() {
     if (isPapersFolder && selectedBoard && item.board !== selectedBoard) return false;
     return true;
   });
+
+  // 🧹 Helper to fix AI formatting mistakes before rendering (UPGRADED AUTO-CORRECTOR)
+  const cleanMarkdown = (text) => {
+      if (!text) return "";
+      let cleaned = text;
+      
+      // 1. If AI used **HEADER** instead of ### HEADER, auto-fix it
+      cleaned = cleaned.replace(/\*\*(.*?)\*\*/g, (match, p1) => {
+          const up = p1.toUpperCase();
+          if (up.includes('POLITY') || up.includes('ECONOMY') || up.includes('INTERNATIONAL') || up.includes('SCIENCE') || up.includes('AWARDS') || up.includes('ASSAM')) {
+              return `### ${p1.replace(/###/g, '').trim()}`;
+          }
+          return match;
+      });
+
+      // 2. Force double line breaks before headers so React adds proper spacing!
+      cleaned = cleaned.replace(/### /g, '\n\n### ');
+
+      // 3. Clean up any accidental massive empty gaps
+      cleaned = cleaned.replace(/\n{4,}/g, '\n\n\n');
+      
+      return cleaned;
+  };
 
   return (
     <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', minHeight: '80vh' }}>
@@ -129,11 +149,10 @@ function CategoryPage() {
       </h1>
 
       {/* ================================================================= */}
-      {/* 📰 CURRENT AFFAIRS VIEW (Adda247 / ExamCharcha Accordion Style)   */}
+      {/* 📰 CURRENT AFFAIRS VIEW (Colorful Career Portal Style)   */}
       {/* ================================================================= */}
       {isCurrentAffairs && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              
               <p style={{ color: '#64748b', marginBottom: '10px' }}>
                   Stay informed with the latest {categoryName.toLowerCase()}, crucial for your competitive exam preparation.
               </p>
@@ -146,28 +165,48 @@ function CategoryPage() {
               ) : (
                   getFilteredNews().map(news => (
                       <details key={news._id} style={accordionStyle}>
-                          
-                          {/* The Clickable Title */}
                           <summary style={accordionSummaryStyle}>
                               <span style={{ marginRight: '10px', color: '#2563eb' }}>➡️</span>
                               {news.title}
                           </summary>
                           
-                          {/* The Expanded Content Area with ReactMarkdown */}
                           <div style={accordionContentStyle}>
+                              {/* 🎨 THIS IS WHERE THE MAGIC HAPPENS */}
+                              <ReactMarkdown 
+                                remarkPlugins={[remarkGfm]}
+                                components={{
+                                  // This styles the ### Headers like your blue Career Portal boxes!
+                                  h3: ({node, ...props}) => (
+                                      <h3 style={{
+                                          backgroundColor: '#2563eb', // Beautiful Royal Blue
+                                          color: 'white',
+                                          padding: '12px 18px',
+                                          borderRadius: '6px',
+                                          marginTop: '30px',
+                                          marginBottom: '15px',
+                                          fontSize: '1.2rem',
+                                          fontWeight: 'bold',
+                                          boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)'
+                                      }} {...props} />
+                                  ),
+                                  // This ensures proper bullet points
+                                  ul: ({node, ...props}) => <ul style={{ paddingLeft: '25px', marginBottom: '20px', color: '#334155' }} {...props} />,
+                                  li: ({node, ...props}) => <li style={{ marginBottom: '10px', lineHeight: '1.7' }} {...props} />,
+                                  // Gives paragraphs nice breathing room
+                                  p: ({node, ...props}) => <p style={{ marginBottom: '15px', lineHeight: '1.7', color: '#334155' }} {...props} />
+                                }}
+                              >
+                                {cleanMarkdown(news.content)}
+                              </ReactMarkdown>
                               
-                              <ReactMarkdown>{news.content}</ReactMarkdown>
-                              
-                              {/* Show the PDF button ONLY if a link was manually provided */}
                               {news.pdfLink && (
-                                  <div style={{ marginTop: '25px' }}>
+                                  <div style={{ marginTop: '25px', paddingTop: '20px', borderTop: '1px solid #e2e8f0' }}>
                                       <a href={news.pdfLink} target="_blank" rel="noreferrer" style={downloadButtonStyle}>
                                           📄 View Official PDF
                                       </a>
                                   </div>
                               )}
                           </div>
-
                       </details>
                   ))
               )}
@@ -175,11 +214,10 @@ function CategoryPage() {
       )}
 
       {/* ================================================================= */}
-      {/* 🏫 SCHOOL ACADEMICS VIEW (PDF Deep Folders + Optional Articles)     */}
+      {/* 🏫 SCHOOL ACADEMICS VIEW   */}
       {/* ================================================================= */}
       {!isCurrentAffairs && (
           <>
-              {/* --- 1. SUBJECTS GRID --- */}
               {!selectedSubject && isDeepFolder && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
                   {subjects.map((sub) => (
@@ -194,7 +232,6 @@ function CategoryPage() {
                 </div>
               )}
 
-              {/* --- 2. TYPES GRID --- */}
               {selectedSubject && !selectedType && isDeepFolder && (
                 <div>
                   <button onClick={() => setSelectedSubject(null)} style={backButtonStyle}>← Back to Subjects</button>
@@ -223,7 +260,6 @@ function CategoryPage() {
                 </div>
               )}
 
-              {/* --- 3. FILES / ARTICLES / BOARD SELECTION --- */}
               {(selectedType || !isDeepFolder) && (
                 <div>
                    {isDeepFolder && (
@@ -236,8 +272,6 @@ function CategoryPage() {
                    )}
                    
                    <div style={{ marginTop: '20px' }}>
-                     
-                     {/* BOARD SELECTION GRID */}
                      {isPapersFolder && !selectedBoard ? (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
                             <div onClick={() => setSelectedBoard('CBSE')} style={cardStyle}
@@ -257,7 +291,6 @@ function CategoryPage() {
                             </div>
                         </div>
                      ) : (
-                        /* STANDARD FILE & ARTICLE LIST */
                         <div style={{ display: 'grid', gap: '20px' }}>
                             {currentFiles.length === 0 ? (
                                 <p style={{ color: '#666' }}>No content found here yet.</p>
@@ -303,7 +336,7 @@ const cardStyle = { background: 'white', padding: '30px', borderRadius: '15px', 
 const backButtonStyle = { background: 'none', border: 'none', color: '#6366f1', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem', padding: 0 };
 const downloadButtonStyle = { textDecoration: 'none', background: '#3b82f6', color: 'white', padding: '10px 20px', borderRadius: '5px', fontSize: '0.9rem', fontWeight: 'bold', display: 'inline-block' };
 
-// --- 🆕 NEW ACCORDION STYLES (ExamCharcha Style) ---
+// --- ACCORDION STYLES ---
 const accordionStyle = { 
     background: 'white', 
     borderRadius: '8px', 
@@ -319,15 +352,12 @@ const accordionSummaryStyle = {
     color: '#1e293b', 
     background: '#f8fafc',
     display: 'flex',
-    alignItems: 'center'
+    alignItems: 'center',
+    borderBottom: '1px solid #e2e8f0'
 };
 const accordionContentStyle = { 
-    padding: '25px', 
-    // Removed whiteSpace: 'pre-wrap' because ReactMarkdown handles formatting naturally!
-    lineHeight: '1.8', 
-    color: '#334155', 
-    borderTop: '1px solid #e2e8f0',
-    fontSize: '1rem'
+    padding: '30px 40px', 
+    background: '#ffffff'
 };
 
 export default CategoryPage;
