@@ -36,10 +36,12 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
 // ==========================================
-// 📧 EMAIL TRANSPORTER SETUP
+// 📧 EMAIL TRANSPORTER SETUP (ZOHO MAIL)
 // ==========================================
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.zoho.in', // Zoho India server
+    port: 465,
+    secure: true, // Use SSL
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
