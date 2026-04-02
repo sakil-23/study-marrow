@@ -283,7 +283,16 @@ app.post('/api/current-affairs', verifyAdmin, [
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// 11. DELETE CURRENT AFFAIR (Protected)
+// 11. EDIT CURRENT AFFAIR (Protected)
+app.put('/api/current-affairs/:id', verifyAdmin, async (req, res) => {
+    try {
+        const { title, content } = req.body;
+        const updatedAffair = await CurrentAffair.findByIdAndUpdate(req.params.id, { title, content }, { new: true });
+        res.json(updatedAffair);
+    } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// 12. DELETE CURRENT AFFAIR (Protected)
 app.delete('/api/current-affairs/:id', verifyAdmin, async (req, res) => {
     try {
         await CurrentAffair.findByIdAndDelete(req.params.id);
@@ -292,7 +301,7 @@ app.delete('/api/current-affairs/:id', verifyAdmin, async (req, res) => {
 });
 
 // ==========================================
-// 🤖 12. THE NEW AI PDF REWRITE ENGINE (Native Gemini)
+// 🤖 13. THE NEW AI PDF REWRITE ENGINE (Native Gemini)
 // ==========================================
 app.post('/api/ai-rewrite', verifyAdmin, upload.single('pdfFile'), async (req, res) => {
     try {
@@ -313,22 +322,25 @@ app.post('/api/ai-rewrite', verifyAdmin, upload.single('pdfFile'), async (req, r
 
         // 2. The Strict Prompt
         const prompt = `
-        Act as the Master Content Creator for top-tier Indian competitive exams (UPSC, APSC, SSC, ADRE).
-        I am providing you with a competitor's current affairs PDF document. 
+        Act as the Master Content Creator for Indian competitive exams.
         
         YOUR MISSION:
-        1. Read the document and extract all factual news points.
-        2. COMPLETELY REWRITE the text in your own words. Do not copy their exact sentences (to avoid copyright).
-        3. Remove any branding, advertisements, or mentions of the original author/platform.
-        4. Format it beautifully using standard text dashes (-) for bullet points.
+        1. Read the document and extract factual news points.
+        2. COMPLETELY REWRITE the text to avoid copyright.
+        3. Remove any branding from the original author.
         
-        Categorize the news EXACTLY into these headers (Only include headers that have relevant news in the PDF):
-        🏛️ POLITY & GOVERNANCE
-        💹 ECONOMY & BANKING
-        🌍 INTERNATIONAL & DEFENSE
-        🚀 SCIENCE & ENVIRONMENT
-        🏆 AWARDS, APPOINTMENTS & SPORTS
-        🦏 ASSAM & NORTHEAST
+        CRITICAL RULES:
+        - DO NOT include any conversational filler, introductions, or concluding statements (e.g., DO NOT say "Here is the guide" or "As an AI").
+        - START DIRECTLY with the first header.
+        - Format using standard Markdown: Use '### ' for headers and '-' for bullet points.
+        
+        Categorize into these headers (Only include headers that have relevant news):
+        ### 🏛️ POLITY & GOVERNANCE
+        ### 💹 ECONOMY & BANKING
+        ### 🌍 INTERNATIONAL & DEFENSE
+        ### 🚀 SCIENCE & ENVIRONMENT
+        ### 🏆 AWARDS, APPOINTMENTS & SPORTS
+        ### 🦏 ASSAM & NORTHEAST
         `;
 
         console.log(`🧠 Handing PDF directly to Gemini AI...`);
