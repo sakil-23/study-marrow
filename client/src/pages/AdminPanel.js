@@ -19,12 +19,13 @@ function AdminPanel() {
     const [materials, setMaterials] = useState([]); 
     const [subscribers, setSubscribers] = useState([]);
 
-    // 🆕 --- DATA STATE (Current Affairs Mega-Article) ---
+    // 🤖 --- DATA STATE (AI PDF Engine) ---
     const [currentAffairs, setCurrentAffairs] = useState([]);
-    const [caTitle, setCaTitle] = useState(''); // 👈 Replaced headline
-    const [caContent, setCaContent] = useState(''); // 👈 Replaced summary
-    const [caCategory, setCaCategory] = useState('Weekly Current Affairs'); // 👈 Replaced topic/events
+    const [caTitle, setCaTitle] = useState(''); 
+    const [caCategory, setCaCategory] = useState('Weekly Current Affairs'); 
     const [caPdfLink, setCaPdfLink] = useState('');
+    const [caPdfFile, setCaPdfFile] = useState(null); // 👈 Holds the actual uploaded file
+    const [isRewriting, setIsRewriting] = useState(false); // 👈 Loading state for the AI
 
     // --- 🏗️ THE MEGA-PORTAL STRUCTURE ---
     const portalData = {
@@ -97,7 +98,7 @@ function AdminPanel() {
         let finalType = resourceType;
 
         if (vertical === 'Job Exam Preparation') return alert("⚠️ This section is under progress.");
-        if (vertical === 'Current Affairs') return alert("Please use the 'Post Study Guide' form below for Current Affairs!");
+        if (vertical === 'Current Affairs') return alert("Please use the 'AI PDF Engine' below for Current Affairs!");
         
         if (!category || !subject || !resourceType || !title) return alert("Please fill all dropdowns!");
         if (resourceType.includes('Papers') && !board) return alert("⚠️ Please select a Board!");
@@ -115,23 +116,37 @@ function AdminPanel() {
         } catch (err) { alert('Upload failed'); }
     };
 
-    // 📰 --- POST NEW CURRENT AFFAIR STUDY GUIDE ---
+    // 🤖 --- POST VIA AI PDF REWRITE ENGINE ---
     const handleAddCurrentAffair = async (e) => {
         e.preventDefault();
-        if (!caTitle || !caContent) return alert("Title and Content are required!");
+        if (!caTitle || !caPdfFile) return alert("Title and a PDF file are required!");
+
+        setIsRewriting(true); // Turns on the loading button
+
+        const formData = new FormData();
+        formData.append('pdfFile', caPdfFile);
+        formData.append('title', caTitle);
+        formData.append('category', caCategory);
+        if (caPdfLink) formData.append('pdfLink', caPdfLink);
 
         try {
-            await axios.post('https://study-marrow-api.onrender.com/api/current-affairs', {
-                title: caTitle,
-                content: caContent,
-                category: caCategory,
-                pdfLink: caPdfLink
-            }, { headers: { Authorization: `Bearer ${token}` } });
+            await axios.post('https://study-marrow-api.onrender.com/api/ai-rewrite', formData, { 
+                headers: { 
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'multipart/form-data' 
+                } 
+            });
             
-            alert("📰 Study Guide Published!");
-            setCaTitle(''); setCaContent(''); setCaPdfLink(''); setCaCategory('Weekly Current Affairs');
+            alert("✨ AI successfully rewrote and published the study guide!");
+            setCaTitle(''); setCaPdfFile(null); setCaPdfLink(''); setCaCategory('Weekly Current Affairs');
+            document.getElementById('pdfFileInput').value = ""; 
             fetchCurrentAffairs();
-        } catch (err) { alert("Failed to publish news."); }
+        } catch (err) { 
+            console.error(err);
+            alert("❌ Failed to process PDF. It might be too large, or the AI timed out."); 
+        } finally {
+            setIsRewriting(false); // Turns off the loading button
+        }
     };
 
     const handleDeleteCA = async (id) => {
@@ -267,28 +282,38 @@ function AdminPanel() {
                 </form>
             </div>
 
-            {/* 🆕 2. POST STUDY GUIDE / CURRENT AFFAIRS FORM */}
+            {/* 🤖 2. NEW AI PDF ENGINE FORM */}
             <div style={{ background: '#fdf4ff', padding: '25px', borderRadius: '12px', marginBottom: '30px', border: '1px solid #fbcfe8', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-                <h2 style={{ marginTop: 0, color: '#d946ef', marginBottom: '20px' }}>📰 Post Study Guide / Current Affairs</h2>
+                <h2 style={{ marginTop: 0, color: '#d946ef', marginBottom: '10px' }}>🤖 AI Study Guide Engine</h2>
+                <p style={{ color: '#a21caf', marginBottom: '20px', fontSize: '0.9rem' }}>Upload a competitor's PDF. The AI will extract the facts, rewrite them completely to avoid copyright, and publish the article.</p>
+                
                 <form onSubmit={handleAddCurrentAffair} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                     
-                    <select value={caCategory} onChange={(e) => setCaCategory(e.target.value)} style={{...inputStyle, background: 'white'}} required>
+                    <select value={caCategory} onChange={(e) => setCaCategory(e.target.value)} style={{...inputStyle, background: 'white'}} required disabled={isRewriting}>
                         <option value="Weekly Current Affairs">Weekly Current Affairs</option>
                         <option value="Monthly Current Affairs">Monthly Current Affairs</option>
                         <option value="Specific Event Current Affairs">Specific Event</option>
                     </select>
 
-                    <input type="text" placeholder="Title (e.g. Weekly One Liners: 15 March – 21 March 2026)" value={caTitle} onChange={(e) => setCaTitle(e.target.value)} required style={inputStyle} />
+                    <input type="text" placeholder="Title (e.g. Weekly Compilation: 15 March – 21 March 2026)" value={caTitle} onChange={(e) => setCaTitle(e.target.value)} required style={inputStyle} disabled={isRewriting}/>
                     
-                    <textarea placeholder="Paste the compiled study guide content here..." value={caContent} onChange={(e) => setCaContent(e.target.value)} required style={{...inputStyle, height: '200px', resize: 'vertical'}} />
+                    {/* The new File Input for the PDF */}
+                    <div style={{ background: 'white', padding: '15px', borderRadius: '6px', border: '1px dashed #d946ef' }}>
+                        <label style={{ display: 'block', marginBottom: '10px', color: '#475569', fontWeight: 'bold' }}>📄 Upload Competitor PDF Here:</label>
+                        <input type="file" id="pdfFileInput" accept="application/pdf" onChange={(e) => setCaPdfFile(e.target.files[0])} required disabled={isRewriting} />
+                    </div>
                     
-                    <input type="url" placeholder="Attach Official PDF Link (Optional)" value={caPdfLink} onChange={(e) => setCaPdfLink(e.target.value)} style={{ ...inputStyle, borderColor: '#d946ef', background: 'white' }} />
+                    <input type="url" placeholder="Attach Official PDF Link (Optional)" value={caPdfLink} onChange={(e) => setCaPdfLink(e.target.value)} style={{ ...inputStyle, borderColor: '#d946ef', background: 'white' }} disabled={isRewriting} />
                     
-                    <button type="submit" style={{...buttonStyle, background: '#d946ef'}}>Publish Study Guide</button>
+                    {/* The Dynamic Loading Button */}
+                    <button type="submit" disabled={isRewriting} style={{...buttonStyle, background: isRewriting ? '#fbcfe8' : '#d946ef', color: isRewriting ? '#a21caf' : 'white', cursor: isRewriting ? 'wait' : 'pointer'}}>
+                        {isRewriting ? "🤖 AI is reading & rewriting (Please wait 10-20 seconds)..." : "⚡ Process PDF & Publish"}
+                    </button>
+
                 </form>
             </div>
 
-            {/* 🆕 3. CURRENT AFFAIRS DATABASE VIEW */}
+            {/* 3. CURRENT AFFAIRS DATABASE VIEW */}
             <div style={{ background: '#fff', padding: '20px', borderRadius: '10px', border: '1px solid #ddd', marginBottom: '30px' }}>
                 <h3 style={{ marginTop: 0, color: '#d946ef', borderBottom: '2px solid #d946ef', paddingBottom: '10px' }}>
                     🗞️ Recent Study Guides ({currentAffairs.length})
