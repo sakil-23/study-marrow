@@ -304,9 +304,9 @@ app.post('/api/ai-rewrite', verifyAdmin, upload.single('pdfFile'), async (req, r
 
         console.log(`📄 Extracting text from PDF: ${req.file.originalname}`);
         
-        // 1. Extract text from the uploaded PDF buffer
-        const pdfData = await pdfParse(req.file.buffer);
-        const rawText = pdfData.text;
+        // 1. Extract text from the uploaded PDF buffer (with failsafe unwrap)
+        const parseHelper = typeof pdfParse === 'function' ? pdfParse : pdfParse.default;
+        const pdfData = await parseHelper(req.file.buffer);
 
         console.log(`🧠 Handing ${rawText.length} characters to Gemini for rewriting...`);
 
