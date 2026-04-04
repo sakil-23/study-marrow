@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 function AdminPanel() {
@@ -26,7 +26,7 @@ function AdminPanel() {
     const [caPdfLink, setCaPdfLink] = useState('');
     const [caPdfFile, setCaPdfFile] = useState(null); 
     const [isRewriting, setIsRewriting] = useState(false); 
-    const [editingCA, setEditingCA] = useState(null); // 👈 NEW: Holds the guide being edited
+    const [editingCA, setEditingCA] = useState(null);
 
     // --- 🏗️ THE MEGA-PORTAL STRUCTURE ---
     const portalData = {
@@ -64,9 +64,9 @@ function AdminPanel() {
     };
 
     const fetchData = (currentToken) => { 
-        fetchMaterials(); 
+        fetchMaterials(currentToken); 
         fetchSubscribers(currentToken); 
-        fetchCurrentAffairs();
+        fetchCurrentAffairs(currentToken);
     };
     
     const fetchMaterials = async () => {
@@ -150,7 +150,7 @@ function AdminPanel() {
         }
     };
 
-    // 📝 --- NEW: SAVE EDITED CURRENT AFFAIR ---
+    // 📝 --- SAVE EDITED CURRENT AFFAIR ---
     const handleSaveCAEdit = async () => {
         try {
             await axios.put(`https://study-marrow-api.onrender.com/api/current-affairs/${editingCA._id}`, {
@@ -159,8 +159,8 @@ function AdminPanel() {
             }, { headers: { Authorization: `Bearer ${token}` } });
             
             alert("✅ Edit saved successfully!");
-            setEditingCA(null); // Close modal
-            fetchCurrentAffairs(); // Refresh list
+            setEditingCA(null); 
+            fetchCurrentAffairs(); 
         } catch (err) { alert("❌ Failed to save edit."); }
     };
 
@@ -172,6 +172,44 @@ function AdminPanel() {
             });
             fetchCurrentAffairs();
         } catch (err) { alert("Error deleting news"); }
+    };
+
+    // 🔄 --- NEW: HANDLE DRAG & DROP FOR CURRENT AFFAIRS ---
+    const handleMoveCA = async (caToMove, direction) => {
+        // Only swap with other items in the SAME category (e.g. Monthly with Monthly)
+        const currentList = currentAffairs.filter(c => c.category === caToMove.category);
+        const index = currentList.findIndex(c => c._id === caToMove._id);
+        
+        if (index === -1) return;
+        const newIndex = index + direction;
+        if (newIndex < 0 || newIndex >= currentList.length) return; 
+
+        // Swap the items
+        const temp = currentList[index];
+        currentList[index] = currentList[newIndex];
+        currentList[newIndex] = temp;
+
+        const updates = currentList.map((item, idx) => ({ id: item._id, order: idx }));
+
+        // Optimistic UI update
+        setCurrentAffairs(prev => {
+            const updated = [...prev];
+            updates.forEach(u => {
+                const found = updated.find(c => c._id === u.id);
+                if (found) found.order = u.order;
+            });
+            return updated; 
+        });
+
+        try {
+            await axios.put('https://study-marrow-api.onrender.com/api/current-affairs/reorder', { updates }, { 
+                headers: { Authorization: `Bearer ${token}` } 
+            });
+            fetchCurrentAffairs(); // Sync with backend sorting
+        } catch (err) { 
+            alert("❌ Reorder failed"); 
+            fetchCurrentAffairs(); 
+        }
     };
 
     const handleEdit = async (id, currentTitle) => {
@@ -326,7 +364,7 @@ function AdminPanel() {
                 </form>
             </div>
 
-            {/* 3. CURRENT AFFAIRS DATABASE VIEW (WITH EDIT BUTTON!) */}
+            {/* 3. CURRENT AFFAIRS DATABASE VIEW (WITH EDIT & DRAG BUTTONS!) */}
             <div style={{ background: '#fff', padding: '20px', borderRadius: '10px', border: '1px solid #ddd', marginBottom: '30px' }}>
                 <h3 style={{ marginTop: 0, color: '#d946ef', borderBottom: '2px solid #d946ef', paddingBottom: '10px' }}>
                     🗞️ Recent Study Guides ({currentAffairs.length})
@@ -334,22 +372,31 @@ function AdminPanel() {
                 <div style={{ maxHeight: '250px', overflowY: 'auto' }}>
                     {currentAffairs.length === 0 ? <p>No guides posted yet.</p> : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            {currentAffairs.map(ca => (
-                                <div key={ca._id} style={{ padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px', background: '#f8fafc' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                        <div>
-                                            <span style={{ fontSize: '0.8rem', background: '#e0e7ff', color: '#3730a3', padding: '2px 6px', borderRadius: '4px', marginRight: '8px' }}>{ca.category}</span>
-                                            <h4 style={{ margin: '5px 0 2px 0', color: '#1e293b' }}>{ca.title}</h4>
-                                            <small style={{ color: '#64748b' }}>{new Date(ca.date).toLocaleDateString()}</small>
-                                        </div>
-                                        <div style={{display: 'flex', gap: '5px'}}>
-                                            {/* 👈 NEW EDIT BUTTON HERE */}
-                                            <button onClick={() => setEditingCA(ca)} style={miniEditBtn}>✎</button> 
-                                            <button onClick={() => handleDeleteCA(ca._id)} style={miniDeleteBtn}>🗑</button>
+                            {currentAffairs.map((ca, idx, arr) => {
+                                // Calculate the relative index of this item WITHIN its own category
+                                const categoryList = arr.filter(c => c.category === ca.category);
+                                const catIdx = categoryList.findIndex(c => c._id === ca._id);
+
+                                return (
+                                    <div key={ca._id} style={{ padding: '10px', border: '1px solid #e2e8f0', borderRadius: '6px', background: '#f8fafc' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <div>
+                                                <span style={{ fontSize: '0.8rem', background: '#e0e7ff', color: '#3730a3', padding: '2px 6px', borderRadius: '4px', marginRight: '8px' }}>{ca.category}</span>
+                                                <h4 style={{ margin: '5px 0 2px 0', color: '#1e293b' }}>{ca.title}</h4>
+                                                <small style={{ color: '#64748b' }}>{new Date(ca.date).toLocaleDateString()}</small>
+                                            </div>
+                                            <div style={{display: 'flex', gap: '5px', alignItems: 'center'}}>
+                                                {/* 🔄 DRAG AND DROP BUTTONS */}
+                                                <button onClick={() => handleMoveCA(ca, -1)} style={{...arrowBtn, opacity: catIdx === 0 ? 0.3 : 1}} disabled={catIdx === 0}>⬆️</button>
+                                                <button onClick={() => handleMoveCA(ca, 1)} style={{...arrowBtn, opacity: catIdx === categoryList.length - 1 ? 0.3 : 1}} disabled={catIdx === categoryList.length - 1}>⬇️</button>
+                                                
+                                                <button onClick={() => setEditingCA(ca)} style={miniEditBtn}>✎</button> 
+                                                <button onClick={() => handleDeleteCA(ca._id)} style={miniDeleteBtn}>🗑</button>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>
