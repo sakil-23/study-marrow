@@ -322,7 +322,28 @@ app.post('/api/ai-rewrite', verifyAdmin, upload.single('pdfFile'), async (req, r
             }
         };
 
-        // 2. The Strict Prompt (UPGRADED FOR MAX DETAIL & EXACT FORMATTING)
+        // 🧠 2. THE SMART DYNAMIC PROMPT LOGIC
+        let formattingRules = "";
+        
+        if (category === "Weekly Current Affairs") {
+            formattingRules = `
+            Categorize into exactly these headers (Only include headers that have relevant news):
+            ### 🏛️ POLITY & GOVERNANCE
+            ### 💹 ECONOMY & BANKING
+            ### 🌍 INTERNATIONAL & DEFENSE
+            ### 🚀 SCIENCE & ENVIRONMENT
+            ### 🏆 AWARDS, APPOINTMENTS & SPORTS
+            ### 🦏 ASSAM & NORTHEAST
+            `;
+        } else {
+            // For Monthly/Specific Events where chunks are pre-separated by topic:
+            formattingRules = `
+            Since this document is already focused on a specific topic, DO NOT use the standard weekly categories. 
+            Instead, use the document's main topic as the single primary header (formatted exactly with three hashes and a space, e.g., '### National News'). 
+            Extract EVERY SINGLE factual point from the document under this one header.
+            `;
+        }
+
         const prompt = `
         Act as the Master Content Creator for Indian competitive exams.
         
@@ -336,13 +357,7 @@ app.post('/api/ai-rewrite', verifyAdmin, upload.single('pdfFile'), async (req, r
         - DO NOT include any conversational filler (e.g., DO NOT say "Here is the guide").
         - Format using standard Markdown: '-' for bullet points.
         
-        Categorize into exactly these headers (Only include headers that have relevant news):
-        ### 🏛️ POLITY & GOVERNANCE
-        ### 💹 ECONOMY & BANKING
-        ### 🌍 INTERNATIONAL & DEFENSE
-        ### 🚀 SCIENCE & ENVIRONMENT
-        ### 🏆 AWARDS, APPOINTMENTS & SPORTS
-        ### 🦏 ASSAM & NORTHEAST
+        ${formattingRules}
         `;
 
         console.log(`🧠 Handing PDF directly to Gemini AI...`);
