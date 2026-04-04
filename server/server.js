@@ -28,10 +28,9 @@ app.set('trust proxy', 1);
 // ==========================================
 // 🧠 AI & UPLOAD CONFIGURATION
 // ==========================================
-// Store uploaded PDFs temporarily in RAM (Memory) so we don't clutter your server
+// Store uploaded PDFs temporarily in RAM (Memory)
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
@@ -41,7 +40,7 @@ const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 const transporter = nodemailer.createTransport({
     host: 'smtp.zoho.in', // Zoho India server
     port: 465,
-    secure: true, // Use SSL
+    secure: true, 
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
@@ -50,7 +49,7 @@ const transporter = nodemailer.createTransport({
 
 transporter.verify((error, success) => {
     if (error) {
-        console.log("⚠️ Email Service Error (Check EMAIL_USER and EMAIL_PASS):", error);
+        console.log("⚠️ Email Service Error:", error);
     } else {
         console.log("📧 Email Service is Ready!");
     }
@@ -74,7 +73,6 @@ app.use(cors({
 
 app.use(express.json());
 
-// --- RATE LIMITERS ---
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, 
     max: 500, 
@@ -95,7 +93,6 @@ app.use('/api/', apiLimiter);
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "mysecretpass";
 const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_key"; 
 
-// 🆕 JWT VERIFICATION MIDDLEWARE
 const verifyAdmin = (req, res, next) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -122,7 +119,6 @@ app.get('/', (req, res) => res.send('Server is running and healthy! 🚀'));
 // 🚀 API ROUTES (Materials & Subscribers)
 // ==========================================
 
-// 1. GET ALL MATERIALS (Public)
 app.get('/api/materials', async (req, res) => {
     try {
         const materials = await Material.find().sort({ order: 1, date: -1 });
@@ -130,7 +126,6 @@ app.get('/api/materials', async (req, res) => {
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// 2. REORDER MATERIALS (Protected)
 app.put('/api/materials/reorder', verifyAdmin, async (req, res) => {
     try {
         const { updates } = req.body; 
@@ -142,7 +137,6 @@ app.put('/api/materials/reorder', verifyAdmin, async (req, res) => {
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// 3. ADD SUBSCRIBER (Public)
 app.post('/api/subscribe', [
     body('email').isEmail().withMessage('Must be a valid email address').normalizeEmail()
 ], async (req, res) => {
@@ -160,7 +154,6 @@ app.post('/api/subscribe', [
     } catch (err) { res.status(500).json({ message: "Server error" }); }
 });
 
-// 4. VERIFY ADMIN
 app.post('/api/verify-admin', loginLimiter, (req, res) => {
     const providedPassword = req.headers['admin-key'];
     if (providedPassword === ADMIN_PASSWORD) {
@@ -171,7 +164,6 @@ app.post('/api/verify-admin', loginLimiter, (req, res) => {
     }
 });
 
-// 5. UPLOAD MATERIAL (Protected)
 app.post('/api/upload', verifyAdmin, [
     body('title').trim().notEmpty().escape(), 
     body('link').optional({ checkFalsy: true }).isURL().withMessage("Must be a valid URL"), 
@@ -195,7 +187,6 @@ app.post('/api/upload', verifyAdmin, [
         
         await newMaterial.save();
 
-        // ✉️ --- SEND EMAIL NOTIFICATION ---
         try {
             const subs = await Subscriber.find({}, 'email');
             if (subs.length > 0 && process.env.EMAIL_USER) {
@@ -217,7 +208,6 @@ app.post('/api/upload', verifyAdmin, [
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// 6. RENAME MATERIAL (Protected)
 app.put('/api/materials/:id', verifyAdmin, [
     body('title').trim().notEmpty().escape()
 ], async (req, res) => {
@@ -231,7 +221,6 @@ app.put('/api/materials/:id', verifyAdmin, [
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// 7. DELETE MATERIAL (Protected)
 app.delete('/api/materials/:id', verifyAdmin, async (req, res) => {
     try {
         await Material.findByIdAndDelete(req.params.id);
@@ -239,7 +228,6 @@ app.delete('/api/materials/:id', verifyAdmin, async (req, res) => {
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// 8. GET SUBSCRIBERS (Protected)
 app.get('/api/subscribe', verifyAdmin, async (req, res) => {
     try {
         const subs = await Subscriber.find().sort({ dateJoined: -1 });
@@ -251,15 +239,26 @@ app.get('/api/subscribe', verifyAdmin, async (req, res) => {
 // 📰 CURRENT AFFAIRS API ROUTES
 // ==========================================
 
-// 9. GET CURRENT AFFAIRS (Public)
 app.get('/api/current-affairs', async (req, res) => {
     try {
-        const affairs = await CurrentAffair.find().sort({ date: -1 });
+        // 🔄 NEW: Now sorts by custom order first, then by date!
+        const affairs = await CurrentAffair.find().sort({ order: 1, date: -1 });
         res.json(affairs);
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// 10. POST CURRENT AFFAIR (Protected - Manual Entry)
+// 🔄 NEW: Route to handle dragging and dropping current affairs!
+app.put('/api/current-affairs/reorder', verifyAdmin, async (req, res) => {
+    try {
+        const { updates } = req.body; 
+        const operations = updates.map(item => {
+            return CurrentAffair.findByIdAndUpdate(item.id, { order: item.order });
+        });
+        await Promise.all(operations);
+        res.json({ message: "Current affairs order updated successfully" });
+    } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
 app.post('/api/current-affairs', verifyAdmin, [
     body('title').trim().notEmpty(), 
     body('content').trim().notEmpty(),
@@ -272,12 +271,17 @@ app.post('/api/current-affairs', verifyAdmin, [
     try {
         const { date, title, content, category, pdfLink } = req.body;
         
+        // Ensure new posts appear at the top
+        const topItem = await CurrentAffair.findOne({ category }).sort({ order: 1 });
+        const newOrder = topItem && topItem.order !== undefined ? topItem.order - 1 : 0;
+
         const newAffair = new CurrentAffair({
             date: date || Date.now(),
             title,
             content,
             category,
-            pdfLink 
+            pdfLink,
+            order: newOrder
         });
 
         await newAffair.save(); 
@@ -285,7 +289,6 @@ app.post('/api/current-affairs', verifyAdmin, [
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// 11. EDIT CURRENT AFFAIR (Protected)
 app.put('/api/current-affairs/:id', verifyAdmin, async (req, res) => {
     try {
         const { title, content } = req.body;
@@ -294,7 +297,6 @@ app.put('/api/current-affairs/:id', verifyAdmin, async (req, res) => {
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// 12. DELETE CURRENT AFFAIR (Protected)
 app.delete('/api/current-affairs/:id', verifyAdmin, async (req, res) => {
     try {
         await CurrentAffair.findByIdAndDelete(req.params.id);
@@ -314,7 +316,6 @@ app.post('/api/ai-rewrite', verifyAdmin, upload.single('pdfFile'), async (req, r
 
         console.log(`📄 Formatting PDF for Gemini: ${req.file.originalname}`);
         
-        // 1. Convert the raw PDF directly into a format Gemini can "see"
         const pdfPart = {
             inlineData: {
                 data: req.file.buffer.toString("base64"),
@@ -322,56 +323,57 @@ app.post('/api/ai-rewrite', verifyAdmin, upload.single('pdfFile'), async (req, r
             }
         };
 
-        // 🧠 2. THE SMART DYNAMIC PROMPT LOGIC
+        // 🧠 THE SMART DYNAMIC PROMPT LOGIC (Pushed completely left to prevent indentation glitches)
         let formattingRules = "";
         
         if (category === "Weekly Current Affairs") {
-            formattingRules = `
-            Categorize into exactly these headers (Only include headers that have relevant news):
-            ### 🏛️ POLITY & GOVERNANCE
-            ### 💹 ECONOMY & BANKING
-            ### 🌍 INTERNATIONAL & DEFENSE
-            ### 🚀 SCIENCE & ENVIRONMENT
-            ### 🏆 AWARDS, APPOINTMENTS & SPORTS
-            ### 🦏 ASSAM & NORTHEAST
-            `;
+            formattingRules = `Categorize into exactly these headers (Only include headers that have relevant news):
+### 🏛️ POLITY & GOVERNANCE
+### 💹 ECONOMY & BANKING
+### 🌍 INTERNATIONAL & DEFENSE
+### 🚀 SCIENCE & ENVIRONMENT
+### 🏆 AWARDS, APPOINTMENTS & SPORTS
+### 🦏 ASSAM & NORTHEAST`;
         } else {
-            // For Monthly/Specific Events where chunks are pre-separated by topic:
-            formattingRules = `
-            Since this document is already focused on a specific topic, DO NOT use the standard weekly categories. 
-            Instead, use the document's main topic as the single primary header (formatted exactly with three hashes and a space, e.g., '### National News'). 
-            Extract EVERY SINGLE factual point from the document under this one header.
-            `;
+            formattingRules = `Since this document is already focused on a specific topic, DO NOT use the standard weekly categories. 
+Instead, use the document's main topic as the single primary header (formatted exactly with three hashes and a space, e.g., '### National News'). 
+Extract EVERY SINGLE factual point from the document under this one header.`;
         }
 
-        const prompt = `
-        Act as the Master Content Creator for Indian competitive exams.
-        
-        YOUR MISSION:
-        1. Read the document and extract EVERY SINGLE factual news point. Be highly detailed and comprehensive. DO NOT summarize or skip any events.
-        2. COMPLETELY REWRITE the text to avoid copyright.
-        3. Remove any branding from the original author.
-        
-        CRITICAL FORMATTING RULES:
-        - You MUST use EXACTLY '### ' (three hashes and a space) for the category headers. DO NOT use bold text for headers.
-        - DO NOT include any conversational filler (e.g., DO NOT say "Here is the guide").
-        - Format using standard Markdown: '-' for bullet points.
-        
-        ${formattingRules}
-        `;
+        // 🎯 THE BULLETPROOF COMBINED PROMPT
+        const prompt = `Act as the Master Content Creator for Indian competitive exams.
+
+YOUR MISSION:
+1. Read the document and extract EVERY SINGLE factual news point. Be highly detailed. DO NOT summarize or skip any events.
+2. COMPLETELY REWRITE the text to avoid copyright.
+3. Remove any branding from the original author.
+
+CRITICAL FORMATTING RULES:
+- You MUST format category headers exactly as Markdown Level 3 headings.
+- Start the header line with exactly three hashes and a space (e.g., ### 🏛️ POLITY & GOVERNANCE).
+- DO NOT put backslashes (\\) before the hashes. Do NOT escape the markdown.
+- DO NOT add empty spaces before the hashes.
+- DO NOT use bold text (**...**) for headers.
+- Provide a blank line before and after every header.
+- Format using standard Markdown: '-' for bullet points.
+
+${formattingRules}`;
 
         console.log(`🧠 Handing PDF directly to Gemini AI...`);
 
-        // 3. Hand BOTH the prompt and the PDF file to Gemini
         const result = await aiModel.generateContent([prompt, pdfPart]);
         const rewrittenContent = result.response.text();
 
-        // 4. Save to Database
+        // Ensure new AI posts appear at the top
+        const topItem = await CurrentAffair.findOne({ category }).sort({ order: 1 });
+        const newOrder = topItem && topItem.order !== undefined ? topItem.order - 1 : 0;
+
         const newAffair = new CurrentAffair({
             title: title,
             content: rewrittenContent,
             category: category,
-            pdfLink: pdfLink || "" 
+            pdfLink: pdfLink || "",
+            order: newOrder
         });
 
         await newAffair.save();
