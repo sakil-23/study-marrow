@@ -88,7 +88,9 @@ function AdminPanel() {
     const fetchCurrentAffairs = async () => {
         try {
             const res = await axios.get('https://study-marrow-api.onrender.com/api/current-affairs');
-            setCurrentAffairs(res.data);
+            // FORCE A SORT BY ORDER SO ADMIN PANEL STAYS ORGANIZED
+            const sortedData = res.data.sort((a, b) => (a.order || 0) - (b.order || 0));
+            setCurrentAffairs(sortedData);
         } catch (err) { console.error("Error fetching current affairs", err); }
     };
 
@@ -174,57 +176,47 @@ function AdminPanel() {
         } catch (err) { alert("Error deleting news"); }
     };
 
-    // 🔄 --- FLAWLESS DRAG & DROP FOR CURRENT AFFAIRS ---
+    // 🔄 --- BULLETPROOF DRAG & DROP FOR CURRENT AFFAIRS ---
     const handleMoveCA = async (caToMove, direction) => {
-        // 1. Find exactly where this item sits in the massive list
-        const globalIndex = currentAffairs.findIndex(c => c._id === caToMove._id);
-        if (globalIndex === -1) return;
-
-        // 2. Find where it sits relative to its category siblings (e.g. Monthly vs Monthly)
+        // 1. Get ONLY the items in the same category (e.g. Monthly)
         const currentList = currentAffairs.filter(c => c.category === caToMove.category);
-        const localIndex = currentList.findIndex(c => c._id === caToMove._id);
+        
+        // 2. Sort them by their current visual order
+        currentList.sort((a, b) => (a.order || 0) - (b.order || 0));
 
-        if (localIndex === -1) return;
-        const newLocalIndex = localIndex + direction;
-        if (newLocalIndex < 0 || newLocalIndex >= currentList.length) return; 
+        const index = currentList.findIndex(c => c._id === caToMove._id);
+        if (index === -1) return;
+        
+        const newIndex = index + direction;
+        if (newIndex < 0 || newIndex >= currentList.length) return; 
 
-        // 3. Identify the sibling it is swapping places with
-        const targetCa = currentList[newLocalIndex];
-        const targetGlobalIndex = currentAffairs.findIndex(c => c._id === targetCa._id);
+        // 3. Swap them locally
+        const temp = currentList[index];
+        currentList[index] = currentList[newIndex];
+        currentList[newIndex] = temp;
 
-        // 4. Calculate the new orders
-        const orderA = caToMove.order !== undefined ? caToMove.order : localIndex;
-        const orderB = targetCa.order !== undefined ? targetCa.order : newLocalIndex;
+        // 4. Force hardcoded numbers (0, 1, 2, 3) to fix the "0 vs 0" bug
+        const updates = currentList.map((item, idx) => ({ id: item._id, order: idx }));
 
-        const updates = [
-            { id: caToMove._id, order: orderB },
-            { id: targetCa._id, order: orderA }
-        ];
-
-        // 5. Swap them visually on the screen immediately!
+        // 5. Update UI instantly
         setCurrentAffairs(prev => {
             const updated = [...prev];
-            
-            // Physically swap them in the array
-            const temp = updated[globalIndex];
-            updated[globalIndex] = updated[targetGlobalIndex];
-            updated[targetGlobalIndex] = temp;
-            
-            // Assign their new order numbers
-            updated[globalIndex].order = orderB;
-            updated[targetGlobalIndex].order = orderA;
-
-            return updated;
+            updates.forEach(u => {
+                const found = updated.find(c => c._id === u.id);
+                if (found) found.order = u.order;
+            });
+            // Resort so Admin Panel updates instantly
+            return updated.sort((a, b) => (a.order || 0) - (b.order || 0));
         });
 
-        // 6. Save the new order to MongoDB
+        // 6. Save to Database
         try {
             await axios.put('https://study-marrow-api.onrender.com/api/current-affairs/reorder', { updates }, { 
                 headers: { Authorization: `Bearer ${token}` } 
             });
         } catch (err) { 
-            alert("❌ Reorder failed. Please check internet connection."); 
-            fetchCurrentAffairs(); // Fallback to original order
+            alert("❌ Reorder failed"); 
+            fetchCurrentAffairs(); 
         }
     };
 
@@ -380,7 +372,7 @@ function AdminPanel() {
                 </form>
             </div>
 
-            {/* 3. CURRENT AFFAIRS DATABASE VIEW (WITH EDIT & DRAG BUTTONS!) */}
+            {/* 3. CURRENT AFFAIRS DATABASE VIEW */}
             <div style={{ background: '#fff', padding: '20px', borderRadius: '10px', border: '1px solid #ddd', marginBottom: '30px' }}>
                 <h3 style={{ marginTop: 0, color: '#d946ef', borderBottom: '2px solid #d946ef', paddingBottom: '10px' }}>
                     🗞️ Recent Study Guides ({currentAffairs.length})
@@ -402,7 +394,6 @@ function AdminPanel() {
                                                 <small style={{ color: '#64748b' }}>{new Date(ca.date).toLocaleDateString()}</small>
                                             </div>
                                             <div style={{display: 'flex', gap: '5px', alignItems: 'center'}}>
-                                                {/* 🔄 DRAG AND DROP BUTTONS */}
                                                 <button onClick={() => handleMoveCA(ca, -1)} style={{...arrowBtn, opacity: catIdx === 0 ? 0.3 : 1}} disabled={catIdx === 0}>⬆️</button>
                                                 <button onClick={() => handleMoveCA(ca, 1)} style={{...arrowBtn, opacity: catIdx === categoryList.length - 1 ? 0.3 : 1}} disabled={catIdx === categoryList.length - 1}>⬇️</button>
                                                 
