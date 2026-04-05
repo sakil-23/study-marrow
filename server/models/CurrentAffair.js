@@ -22,6 +22,11 @@ const currentAffairSchema = new mongoose.Schema({
     pdfLink: { 
         type: String, 
         required: false // Only used if you manually upload a literal PDF
+    },
+    // 🪄 THE NEW FIELD FOR DRAG AND DROP:
+    order: { 
+        type: Number, 
+        default: 0 
     }
 }, { timestamps: true });
 
