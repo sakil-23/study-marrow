@@ -64,9 +64,9 @@ function AdminPanel() {
     };
 
     const fetchData = (currentToken) => { 
-        fetchMaterials(currentToken); 
+        fetchMaterials(); 
         fetchSubscribers(currentToken); 
-        fetchCurrentAffairs(currentToken);
+        fetchCurrentAffairs();
     };
     
     const fetchMaterials = async () => {
@@ -174,41 +174,57 @@ function AdminPanel() {
         } catch (err) { alert("Error deleting news"); }
     };
 
-    // 🔄 --- NEW: HANDLE DRAG & DROP FOR CURRENT AFFAIRS ---
+    // 🔄 --- FLAWLESS DRAG & DROP FOR CURRENT AFFAIRS ---
     const handleMoveCA = async (caToMove, direction) => {
-        // Only swap with other items in the SAME category (e.g. Monthly with Monthly)
+        // 1. Find exactly where this item sits in the massive list
+        const globalIndex = currentAffairs.findIndex(c => c._id === caToMove._id);
+        if (globalIndex === -1) return;
+
+        // 2. Find where it sits relative to its category siblings (e.g. Monthly vs Monthly)
         const currentList = currentAffairs.filter(c => c.category === caToMove.category);
-        const index = currentList.findIndex(c => c._id === caToMove._id);
-        
-        if (index === -1) return;
-        const newIndex = index + direction;
-        if (newIndex < 0 || newIndex >= currentList.length) return; 
+        const localIndex = currentList.findIndex(c => c._id === caToMove._id);
 
-        // Swap the items
-        const temp = currentList[index];
-        currentList[index] = currentList[newIndex];
-        currentList[newIndex] = temp;
+        if (localIndex === -1) return;
+        const newLocalIndex = localIndex + direction;
+        if (newLocalIndex < 0 || newLocalIndex >= currentList.length) return; 
 
-        const updates = currentList.map((item, idx) => ({ id: item._id, order: idx }));
+        // 3. Identify the sibling it is swapping places with
+        const targetCa = currentList[newLocalIndex];
+        const targetGlobalIndex = currentAffairs.findIndex(c => c._id === targetCa._id);
 
-        // Optimistic UI update
+        // 4. Calculate the new orders
+        const orderA = caToMove.order !== undefined ? caToMove.order : localIndex;
+        const orderB = targetCa.order !== undefined ? targetCa.order : newLocalIndex;
+
+        const updates = [
+            { id: caToMove._id, order: orderB },
+            { id: targetCa._id, order: orderA }
+        ];
+
+        // 5. Swap them visually on the screen immediately!
         setCurrentAffairs(prev => {
             const updated = [...prev];
-            updates.forEach(u => {
-                const found = updated.find(c => c._id === u.id);
-                if (found) found.order = u.order;
-            });
-            return updated; 
+            
+            // Physically swap them in the array
+            const temp = updated[globalIndex];
+            updated[globalIndex] = updated[targetGlobalIndex];
+            updated[targetGlobalIndex] = temp;
+            
+            // Assign their new order numbers
+            updated[globalIndex].order = orderB;
+            updated[targetGlobalIndex].order = orderA;
+
+            return updated;
         });
 
+        // 6. Save the new order to MongoDB
         try {
             await axios.put('https://study-marrow-api.onrender.com/api/current-affairs/reorder', { updates }, { 
                 headers: { Authorization: `Bearer ${token}` } 
             });
-            fetchCurrentAffairs(); // Sync with backend sorting
         } catch (err) { 
-            alert("❌ Reorder failed"); 
-            fetchCurrentAffairs(); 
+            alert("❌ Reorder failed. Please check internet connection."); 
+            fetchCurrentAffairs(); // Fallback to original order
         }
     };
 
