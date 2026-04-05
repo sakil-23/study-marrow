@@ -67,8 +67,10 @@ function CategoryPage() {
     }
   }, [categoryName, isCurrentAffairs]);
 
-  const getFilteredNews = () => {
-      return currentAffairs.filter(news => news.category === categoryName);
+ const getFilteredNews = () => {
+      return currentAffairs
+          .filter(news => news.category === categoryName)
+          .sort((a, b) => (a.order || 0) - (b.order || 0)); // 👈 THIS FORCES THE CORRECT VISUAL ORDER
   };
 
   const currentFiles = materials.filter(item => {
