@@ -1,22 +1,35 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 function Home() {
   const location = useLocation();
+  const navigate = useNavigate(); // 👈 NEW: Lets us change the URL!
+  
   const [search, setSearch] = useState('');
   const [email, setEmail] = useState('');
   const [materials, setMaterials] = useState([]);
 
-  // ✅ SMART NAVIGATION: Checks if we came back from a specific vertical
-  const [selectedVertical, setSelectedVertical] = useState(location.state?.selectedVertical || null);
+  // ✅ UPGRADED SMART NAVIGATION: Reads the URL to load the right section
+  const [selectedVertical, setSelectedVertical] = useState(null);
 
-  // Update selectedVertical if location.state changes (e.g. hitting back button)
   useEffect(() => {
-    if (location.state?.selectedVertical) {
+    // 1. Check if the user used a direct link (e.g., /current-affairs)
+    if (location.pathname === '/current-affairs') {
+      setSelectedVertical('Current Affairs');
+    } 
+    else if (location.pathname === '/school-academics') {
+      setSelectedVertical('School Academics');
+    } 
+    // 2. Fallback for your CategoryPage breadcrumbs
+    else if (location.state?.selectedVertical) {
       setSelectedVertical(location.state.selectedVertical);
+    } 
+    // 3. Otherwise, show the main homepage
+    else {
+      setSelectedVertical(null);
     }
-  }, [location.state]);
+  }, [location.pathname, location.state]);
 
   useEffect(() => {
     axios.get('https://study-marrow-api.onrender.com/api/materials')
@@ -107,10 +120,10 @@ function Home() {
         {/* --- 🏗️ MEGA-PORTAL NAVIGATION --- */}
         {!search && (
             <>
-                {/* BACK BUTTON (If deep inside a vertical) */}
+                {/* BACK BUTTON */}
                 {selectedVertical && (
                     <button 
-                        onClick={() => setSelectedVertical(null)} 
+                        onClick={() => navigate('/')} // 👈 NEW: Sends user back to the clean root URL
                         style={{ background: 'none', border: 'none', color: '#3b82f6', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem', padding: '0 0 20px 0', display: 'flex', alignItems: 'center', gap: '5px' }}
                     >
                         ← Back to Main Portal
@@ -124,14 +137,14 @@ function Home() {
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
                             
                             {/* School Academics Card */}
-                            <div onClick={() => setSelectedVertical('School Academics')} style={verticalCardStyle} className="hover-card">
+                            <div onClick={() => navigate('/school-academics')} style={verticalCardStyle} className="hover-card">
                                 <div style={{ fontSize: '4rem', marginBottom: '15px' }}>🏫</div>
                                 <h2 style={{ color: '#1e293b', margin: '0 0 10px 0' }}>School Academics</h2>
                                 <p style={{ color: '#64748b', margin: 0 }}>Class 8 to 12 materials, NCERT solutions, and Board Papers.</p>
                             </div>
 
                             {/* Current Affairs Card */}
-                            <div onClick={() => setSelectedVertical('Current Affairs')} style={verticalCardStyle} className="hover-card">
+                            <div onClick={() => navigate('/current-affairs')} style={verticalCardStyle} className="hover-card">
                                 <div style={{ fontSize: '4rem', marginBottom: '15px' }}>🌍</div>
                                 <h2 style={{ color: '#1e293b', margin: '0 0 10px 0' }}>Current Affairs</h2>
                                 <p style={{ color: '#64748b', margin: 0 }}>Weekly, Monthly, and Specific event compilations.</p>
@@ -232,7 +245,7 @@ function Home() {
   );
 }
 
-// --- EXISTING STYLES (Navbar styles completely removed) ---
+// --- EXISTING STYLES ---
 const sectionTitleStyle = { borderLeft: '5px solid #3b82f6', paddingLeft: '15px', color: '#1e293b', marginBottom: '30px' };
 const verticalCardStyle = { background: 'white', padding: '40px 30px', borderRadius: '20px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0', textAlign: 'center', cursor: 'pointer', position: 'relative' };
 const subCategoryCardStyle = { background: 'white', padding: '25px', borderRadius: '15px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0', textAlign: 'center', cursor: 'pointer' };

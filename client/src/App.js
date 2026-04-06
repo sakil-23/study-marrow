@@ -40,6 +40,11 @@ function App() {
         <Routes>
           <Route path="/syn-world-23" element={<AdminPanel />} />
           <Route path="/" element={<Home />} />
+          
+          {/* 🚀 NEW: DIRECT SHAREABLE LINKS */}
+          <Route path="/current-affairs" element={<Home />} />
+          <Route path="/school-academics" element={<Home />} />
+
           <Route path="/category/:categoryName" element={<CategoryPage />} />
           <Route path="/library" element={<Library />} />
         </Routes>
