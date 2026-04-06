@@ -146,7 +146,9 @@ function AdminPanel() {
             fetchCurrentAffairs();
         } catch (err) { 
             console.error(err);
-            alert("❌ Failed to process PDF. It might be too large, or the AI timed out."); 
+            // 🕵️‍♂️ Grab the exact error message from the backend!
+            const serverError = err.response?.data?.error || err.response?.data?.message || err.message;
+            alert(`❌ Server Error: ${serverError}`); 
         } finally {
             setIsRewriting(false); 
         }
