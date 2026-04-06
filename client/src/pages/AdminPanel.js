@@ -22,6 +22,7 @@ function AdminPanel() {
     // 🤖 --- DATA STATE (AI PDF Engine & Editing) ---
     const [currentAffairs, setCurrentAffairs] = useState([]);
     const [caTitle, setCaTitle] = useState(''); 
+    const [caGroupName, setCaGroupName] = useState(''); // 👈 NEW FOLDER NAME STATE
     const [caCategory, setCaCategory] = useState('Weekly Current Affairs'); 
     const [caPdfLink, setCaPdfLink] = useState('');
     const [caPdfFile, setCaPdfFile] = useState(null); 
@@ -130,6 +131,7 @@ function AdminPanel() {
         formData.append('pdfFile', caPdfFile);
         formData.append('title', caTitle);
         formData.append('category', caCategory);
+        if (caGroupName) formData.append('groupName', caGroupName); // 👈 NEW: ATTACH FOLDER NAME
         if (caPdfLink) formData.append('pdfLink', caPdfLink);
 
         try {
@@ -141,7 +143,7 @@ function AdminPanel() {
             });
             
             alert("✨ AI successfully rewrote and published the study guide!");
-            setCaTitle(''); setCaPdfFile(null); setCaPdfLink(''); setCaCategory('Weekly Current Affairs');
+            setCaTitle(''); setCaGroupName(''); setCaPdfFile(null); setCaPdfLink(''); // 👈 NEW: CLEAR FOLDER NAME
             document.getElementById('pdfFileInput').value = ""; 
             fetchCurrentAffairs();
         } catch (err) { 
@@ -159,7 +161,8 @@ function AdminPanel() {
         try {
             await axios.put(`https://study-marrow-api.onrender.com/api/current-affairs/${editingCA._id}`, {
                 title: editingCA.title,
-                content: editingCA.content
+                content: editingCA.content,
+                groupName: editingCA.groupName // 👈 NEW: SAVE EDITED FOLDER NAME
             }, { headers: { Authorization: `Bearer ${token}` } });
             
             alert("✅ Edit saved successfully!");
@@ -358,7 +361,10 @@ function AdminPanel() {
                         <option value="Specific Event Current Affairs">Specific Event</option>
                     </select>
 
-                    <input type="text" placeholder="Title (e.g. Weekly Compilation: 15 March – 21 March 2026)" value={caTitle} onChange={(e) => setCaTitle(e.target.value)} required style={inputStyle} disabled={isRewriting}/>
+                    {/* 📁 THE NEW FOLDER FIELD */}
+                    <input type="text" placeholder="Folder Name (e.g. March 2026 OR Budget 2026)" value={caGroupName} onChange={(e) => setCaGroupName(e.target.value)} style={{...inputStyle, borderColor: '#d946ef'}} disabled={isRewriting}/>
+
+                    <input type="text" placeholder="Article Title (e.g. Index and Reports)" value={caTitle} onChange={(e) => setCaTitle(e.target.value)} required style={inputStyle} disabled={isRewriting}/>
                     
                     <div style={{ background: 'white', padding: '15px', borderRadius: '6px', border: '1px dashed #d946ef' }}>
                         <label style={{ display: 'block', marginBottom: '10px', color: '#475569', fontWeight: 'bold' }}>📄 Upload Competitor PDF Here:</label>
@@ -392,6 +398,8 @@ function AdminPanel() {
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                             <div>
                                                 <span style={{ fontSize: '0.8rem', background: '#e0e7ff', color: '#3730a3', padding: '2px 6px', borderRadius: '4px', marginRight: '8px' }}>{ca.category}</span>
+                                                {/* 📁 NEW FOLDER BADGE SO YOU CAN SEE THE GROUPING */}
+                                                <span style={{ fontSize: '0.8rem', background: '#fce7f3', color: '#be185d', padding: '2px 6px', borderRadius: '4px' }}>📁 {ca.groupName || 'Uncategorized'}</span>
                                                 <h4 style={{ margin: '5px 0 2px 0', color: '#1e293b' }}>{ca.title}</h4>
                                                 <small style={{ color: '#64748b' }}>{new Date(ca.date).toLocaleDateString()}</small>
                                             </div>
@@ -500,6 +508,11 @@ function AdminPanel() {
                     <div style={{ background: 'white', padding: '30px', borderRadius: '12px', width: '90%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
                         <h2 style={{ marginTop: 0, color: '#2563eb' }}>✎ Edit Study Guide</h2>
                         
+                        {/* 📁 NEW FOLDER INPUT FIELD FOR OLDER POSTS */}
+                        <label style={{fontWeight: 'bold', fontSize: '0.9rem', color: '#475569'}}>Folder Name:</label>
+                        <input type="text" value={editingCA.groupName || ''} onChange={(e) => setEditingCA({...editingCA, groupName: e.target.value})} style={{...inputStyle, marginBottom: '15px', borderColor: '#d946ef'}} />
+
+                        <label style={{fontWeight: 'bold', fontSize: '0.9rem', color: '#475569'}}>Article Title:</label>
                         <input 
                             type="text" 
                             value={editingCA.title} 

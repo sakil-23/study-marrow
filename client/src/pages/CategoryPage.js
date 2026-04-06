@@ -70,8 +70,26 @@ function CategoryPage() {
  const getFilteredNews = () => {
       return currentAffairs
           .filter(news => news.category === categoryName)
-          .sort((a, b) => (a.order || 0) - (b.order || 0)); // 👈 THIS FORCES THE CORRECT VISUAL ORDER
+          .sort((a, b) => (a.order || 0) - (b.order || 0)); 
   };
+
+  // 🧠 UPGRADED SMART GROUPING: Reads custom folders first, falls back to AI guess!
+  const groupedNews = getFilteredNews().reduce((groups, news) => {
+      
+      let groupName = news.groupName; // 👈 1. Look for the custom folder name you typed
+
+      // 2. If it's an older post and you didn't type a folder, guess the month!
+      if (!groupName || groupName.trim() === "") {
+          const monthYearMatch = news.title.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s\d{4}/i);
+          groupName = monthYearMatch ? monthYearMatch[0] : "General Updates";
+      }
+      
+      if (!groups[groupName]) {
+          groups[groupName] = [];
+      }
+      groups[groupName].push(news);
+      return groups;
+  }, {});
 
   const currentFiles = materials.filter(item => {
     if (selectedSubject && item.subject !== selectedSubject) return false;
@@ -87,12 +105,11 @@ function CategoryPage() {
     return true;
   });
 
-  // 🧹 Helper to fix AI formatting mistakes before rendering (UPGRADED AUTO-CORRECTOR)
+  // 🧹 Helper to fix AI formatting mistakes before rendering
   const cleanMarkdown = (text) => {
       if (!text) return "";
       let cleaned = text;
       
-      // 1. If AI used **HEADER** instead of ### HEADER, auto-fix it
       cleaned = cleaned.replace(/\*\*(.*?)\*\*/g, (match, p1) => {
           const up = p1.toUpperCase();
           if (up.includes('POLITY') || up.includes('ECONOMY') || up.includes('INTERNATIONAL') || up.includes('SCIENCE') || up.includes('AWARDS') || up.includes('ASSAM')) {
@@ -101,13 +118,17 @@ function CategoryPage() {
           return match;
       });
 
-      // 2. Force double line breaks before headers so React adds proper spacing!
       cleaned = cleaned.replace(/### /g, '\n\n### ');
-
-      // 3. Clean up any accidental massive empty gaps
       cleaned = cleaned.replace(/\n{4,}/g, '\n\n\n');
-      
       return cleaned;
+  };
+
+  // Helper to cleanly format the inner titles (Removes the redundant "Monthly Current Affairs March 2026:")
+  const getCleanInnerTitle = (fullTitle) => {
+      if (fullTitle.includes(':')) {
+          return fullTitle.split(':')[1].trim();
+      }
+      return fullTitle;
   };
 
   return (
@@ -151,63 +172,79 @@ function CategoryPage() {
       </h1>
 
       {/* ================================================================= */}
-      {/* 📰 CURRENT AFFAIRS VIEW (Colorful Career Portal Style)   */}
+      {/* 📰 CURRENT AFFAIRS VIEW (NESTED ACCORDIONS)   */}
       {/* ================================================================= */}
       {isCurrentAffairs && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <p style={{ color: '#64748b', marginBottom: '10px' }}>
                   Stay informed with the latest {categoryName.toLowerCase()}, crucial for your competitive exam preparation.
               </p>
 
-              {getFilteredNews().length === 0 ? (
+              {Object.keys(groupedNews).length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '40px', background: '#f8fafc', borderRadius: '10px', color: '#64748b' }}>
                       <span style={{ fontSize: '3rem' }}>🗞️</span>
                       <h3>No study guides uploaded yet.</h3>
                   </div>
               ) : (
-                  getFilteredNews().map(news => (
-                      <details key={news._id} style={accordionStyle}>
-                          <summary style={accordionSummaryStyle}>
-                              <span style={{ marginRight: '10px', color: '#2563eb' }}>➡️</span>
-                              {news.title}
+                  Object.entries(groupedNews).map(([monthGroup, newsItems], index) => (
+                      
+                      /* 📁 OUTER ACCORDION (The Group/Folder) */
+                      <details key={monthGroup} style={groupAccordionStyle} open={index === 0}>
+                          <summary style={groupSummaryStyle}>
+                              <div style={{ display: 'flex', alignItems: 'center' }}>
+                                  <span style={{ marginRight: '15px', fontSize: '1.5rem' }}>🗓️</span>
+                                  {monthGroup}
+                              </div>
+                              <span style={{ background: '#e0e7ff', color: '#3730a3', padding: '4px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                                  {newsItems.length} Topics
+                              </span>
                           </summary>
                           
-                          <div style={accordionContentStyle}>
-                              {/* 🎨 THIS IS WHERE THE MAGIC HAPPENS */}
-                              <ReactMarkdown 
-                                remarkPlugins={[remarkGfm]}
-                                components={{
-                                  // This styles the ### Headers like your blue Career Portal boxes!
-                                  h3: ({node, ...props}) => (
-                                      <h3 style={{
-                                          backgroundColor: '#2563eb', // Beautiful Royal Blue
-                                          color: 'white',
-                                          padding: '12px 18px',
-                                          borderRadius: '6px',
-                                          marginTop: '30px',
-                                          marginBottom: '15px',
-                                          fontSize: '1.2rem',
-                                          fontWeight: 'bold',
-                                          boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)'
-                                      }} {...props} />
-                                  ),
-                                  // This ensures proper bullet points
-                                  ul: ({node, ...props}) => <ul style={{ paddingLeft: '25px', marginBottom: '20px', color: '#334155' }} {...props} />,
-                                  li: ({node, ...props}) => <li style={{ marginBottom: '10px', lineHeight: '1.7' }} {...props} />,
-                                  // Gives paragraphs nice breathing room
-                                  p: ({node, ...props}) => <p style={{ marginBottom: '15px', lineHeight: '1.7', color: '#334155' }} {...props} />
-                                }}
-                              >
-                                {cleanMarkdown(news.content)}
-                              </ReactMarkdown>
+                          <div style={groupContentStyle}>
                               
-                              {news.pdfLink && (
-                                  <div style={{ marginTop: '25px', paddingTop: '20px', borderTop: '1px solid #e2e8f0' }}>
-                                      <a href={news.pdfLink} target="_blank" rel="noreferrer" style={downloadButtonStyle}>
-                                          📄 View Official PDF
-                                      </a>
-                                  </div>
-                              )}
+                              {/* ⚡ INNER ACCORDION (The Specific Articles) */}
+                              {newsItems.map(news => (
+                                  <details key={news._id} style={accordionStyle}>
+                                      <summary style={accordionSummaryStyle}>
+                                          <span style={{ marginRight: '12px', fontSize: '1.2rem' }}>⚡</span>
+                                          {getCleanInnerTitle(news.title)}
+                                      </summary>
+                                      
+                                      <div style={accordionContentStyle}>
+                                          <ReactMarkdown 
+                                            remarkPlugins={[remarkGfm]}
+                                            components={{
+                                              h3: ({node, ...props}) => (
+                                                  <h3 style={{
+                                                      backgroundColor: '#2563eb', 
+                                                      color: 'white',
+                                                      padding: '12px 18px',
+                                                      borderRadius: '6px',
+                                                      marginTop: '30px',
+                                                      marginBottom: '15px',
+                                                      fontSize: '1.2rem',
+                                                      fontWeight: 'bold',
+                                                      boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)'
+                                                  }} {...props} />
+                                              ),
+                                              ul: ({node, ...props}) => <ul style={{ paddingLeft: '25px', marginBottom: '20px', color: '#334155' }} {...props} />,
+                                              li: ({node, ...props}) => <li style={{ marginBottom: '10px', lineHeight: '1.7' }} {...props} />,
+                                              p: ({node, ...props}) => <p style={{ marginBottom: '15px', lineHeight: '1.7', color: '#334155' }} {...props} />
+                                            }}
+                                          >
+                                            {cleanMarkdown(news.content)}
+                                          </ReactMarkdown>
+                                          
+                                          {news.pdfLink && (
+                                              <div style={{ marginTop: '25px', paddingTop: '20px', borderTop: '1px solid #e2e8f0' }}>
+                                                  <a href={news.pdfLink} target="_blank" rel="noreferrer" style={downloadButtonStyle}>
+                                                      📄 View Official PDF
+                                                  </a>
+                                              </div>
+                                          )}
+                                      </div>
+                                  </details>
+                              ))}
                           </div>
                       </details>
                   ))
@@ -338,24 +375,52 @@ const cardStyle = { background: 'white', padding: '30px', borderRadius: '15px', 
 const backButtonStyle = { background: 'none', border: 'none', color: '#6366f1', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem', padding: 0 };
 const downloadButtonStyle = { textDecoration: 'none', background: '#3b82f6', color: 'white', padding: '10px 20px', borderRadius: '5px', fontSize: '0.9rem', fontWeight: 'bold', display: 'inline-block' };
 
-// --- ACCORDION STYLES ---
+// --- 📁 NEW: OUTER GROUP ACCORDION STYLES (The Months) ---
+const groupAccordionStyle = { 
+    background: '#ffffff', 
+    borderRadius: '12px', 
+    border: '1px solid #cbd5e1', 
+    boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
+    marginBottom: '20px',
+    overflow: 'hidden'
+};
+const groupSummaryStyle = { 
+    padding: '20px 25px', 
+    cursor: 'pointer', 
+    fontWeight: 'bold', 
+    fontSize: '1.3rem', 
+    color: '#0f172a', 
+    background: '#f8fafc',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottom: '1px solid #e2e8f0',
+    listStyle: 'none' // Removes the default tiny browser arrow
+};
+const groupContentStyle = { 
+    padding: '20px', 
+    background: '#f1f5f9' // Slightly darker inside the folder to show depth
+};
+
+// --- ⚡ INNER ARTICLE ACCORDION STYLES (The Chapters) ---
 const accordionStyle = { 
     background: 'white', 
     borderRadius: '8px', 
     border: '1px solid #e2e8f0', 
-    boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+    marginBottom: '10px',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
     overflow: 'hidden'
 };
 const accordionSummaryStyle = { 
-    padding: '18px 20px', 
+    padding: '16px 20px', 
     cursor: 'pointer', 
     fontWeight: 'bold', 
-    fontSize: '1.1rem', 
+    fontSize: '1.05rem', 
     color: '#1e293b', 
-    background: '#f8fafc',
+    background: '#ffffff',
     display: 'flex',
     alignItems: 'center',
-    borderBottom: '1px solid #e2e8f0'
+    borderBottom: '1px solid #f1f5f9'
 };
 const accordionContentStyle = { 
     padding: '30px 40px', 
