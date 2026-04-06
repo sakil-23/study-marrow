@@ -27,6 +27,11 @@ const currentAffairSchema = new mongoose.Schema({
     order: { 
         type: Number, 
         default: 0 
+    },
+    // 📁 THE NEW CUSTOM FOLDER FIELD:
+    groupName: { 
+        type: String, 
+        default: "" 
     }
 }, { timestamps: true });
 

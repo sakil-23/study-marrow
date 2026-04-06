@@ -241,13 +241,11 @@ app.get('/api/subscribe', verifyAdmin, async (req, res) => {
 
 app.get('/api/current-affairs', async (req, res) => {
     try {
-        // 🔄 NEW: Now sorts by custom order first, then by date!
         const affairs = await CurrentAffair.find().sort({ order: 1, date: -1 });
         res.json(affairs);
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// 🔄 NEW: Route to handle dragging and dropping current affairs!
 app.put('/api/current-affairs/reorder', verifyAdmin, async (req, res) => {
     try {
         const { updates } = req.body; 
@@ -269,9 +267,8 @@ app.post('/api/current-affairs', verifyAdmin, [
     if (!errors.isEmpty()) return res.status(400).json({ message: "Invalid input", errors: errors.array() });
 
     try {
-        const { date, title, content, category, pdfLink } = req.body;
+        const { date, title, content, category, pdfLink, groupName } = req.body; // 👈 NEW: Extracted groupName
         
-        // Ensure new posts appear at the top
         const topItem = await CurrentAffair.findOne({ category }).sort({ order: 1 });
         const newOrder = topItem && topItem.order !== undefined ? topItem.order - 1 : 0;
 
@@ -281,6 +278,7 @@ app.post('/api/current-affairs', verifyAdmin, [
             content,
             category,
             pdfLink,
+            groupName: groupName || "", // 👈 NEW: Saved to DB
             order: newOrder
         });
 
@@ -291,8 +289,8 @@ app.post('/api/current-affairs', verifyAdmin, [
 
 app.put('/api/current-affairs/:id', verifyAdmin, async (req, res) => {
     try {
-        const { title, content } = req.body;
-        const updatedAffair = await CurrentAffair.findByIdAndUpdate(req.params.id, { title, content }, { new: true });
+        const { title, content, groupName } = req.body; // 👈 NEW: Extracted groupName
+        const updatedAffair = await CurrentAffair.findByIdAndUpdate(req.params.id, { title, content, groupName }, { new: true });
         res.json(updatedAffair);
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
@@ -311,7 +309,7 @@ app.post('/api/ai-rewrite', verifyAdmin, upload.single('pdfFile'), async (req, r
     try {
         if (!req.file) return res.status(400).json({ message: "No PDF file uploaded." });
         
-        const { title, category, pdfLink } = req.body;
+        const { title, category, pdfLink, groupName } = req.body; // 👈 NEW: Extracted groupName
         if (!title || !category) return res.status(400).json({ message: "Title and Category are required." });
 
         console.log(`📄 Formatting PDF for Gemini: ${req.file.originalname}`);
@@ -323,7 +321,6 @@ app.post('/api/ai-rewrite', verifyAdmin, upload.single('pdfFile'), async (req, r
             }
         };
 
-        // 🧠 THE SMART DYNAMIC PROMPT LOGIC (Pushed completely left to prevent indentation glitches)
         let formattingRules = "";
         
         if (category === "Weekly Current Affairs") {
@@ -340,7 +337,6 @@ Instead, use the document's main topic as the single primary header (formatted e
 Extract EVERY SINGLE factual point from the document under this one header.`;
         }
 
-        // 🎯 THE BULLETPROOF COMBINED PROMPT
         const prompt = `Act as the Master Content Creator for Indian competitive exams.
 
 YOUR MISSION:
@@ -364,7 +360,6 @@ ${formattingRules}`;
         const result = await aiModel.generateContent([prompt, pdfPart]);
         const rewrittenContent = result.response.text();
 
-        // Ensure new AI posts appear at the top
         const topItem = await CurrentAffair.findOne({ category }).sort({ order: 1 });
         const newOrder = topItem && topItem.order !== undefined ? topItem.order - 1 : 0;
 
@@ -373,6 +368,7 @@ ${formattingRules}`;
             content: rewrittenContent,
             category: category,
             pdfLink: pdfLink || "",
+            groupName: groupName || "", // 👈 NEW: Saved to DB
             order: newOrder
         });
 
@@ -383,7 +379,9 @@ ${formattingRules}`;
 
     } catch (error) {
         console.error("❌ AI Rewrite Error:", error);
-        res.status(500).json({ message: "Failed to process PDF with AI", error: error.message });
+        // 🕵️‍♂️ Enhanced error reporting
+        const serverError = error.response?.data?.error || error.response?.data?.message || error.message;
+        res.status(500).json({ error: serverError });
     }
 });
 
