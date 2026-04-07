@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import './App.css';
 
@@ -12,6 +12,18 @@ import AdminPanel from './pages/AdminPanel';
 import logo from './logo.png'; 
 
 function App() {
+  // 🌙 1. NEW: State to remember if Dark Mode is on
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  // 🧠 2. NEW: The Magic Logic that applies the Dark Mode to the whole page
+  useEffect(() => {
+    if (isDarkMode) {
+      document.body.classList.add('dark-mode-active');
+    } else {
+      document.body.classList.remove('dark-mode-active');
+    }
+  }, [isDarkMode]);
+
   return (
     <Router>
       <div className="App">
@@ -30,9 +42,20 @@ function App() {
           </Link>
 
           {/* Navigation Links */}
-          <nav className="nav-links">
+          <nav className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             <Link to="/">Home</Link>
             <Link to="/library">Library</Link> 
+            
+            {/* 🌓 3. NEW: The Dark Mode Toggle Button */}
+            <button 
+              onClick={() => setIsDarkMode(!isDarkMode)} 
+              style={{ background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer', padding: '5px', transition: 'transform 0.2s' }}
+              title="Toggle Reading Mode"
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              {isDarkMode ? '☀️' : '🌙'}
+            </button>
           </nav>
         </header>
 
@@ -41,7 +64,7 @@ function App() {
           <Route path="/syn-world-23" element={<AdminPanel />} />
           <Route path="/" element={<Home />} />
           
-          {/* 🚀 NEW: DIRECT SHAREABLE LINKS */}
+          {/* 🚀 DIRECT SHAREABLE LINKS */}
           <Route path="/current-affairs" element={<Home />} />
           <Route path="/school-academics" element={<Home />} />
 
@@ -50,9 +73,22 @@ function App() {
         </Routes>
         
         {/* ========================================== */}
-        {/* 📱 RESPONSIVE CSS STYLES                   */}
+        {/* 📱 RESPONSIVE & DARK MODE CSS              */}
         {/* ========================================== */}
         <style>{`
+          /* 🌙 THE 1-MINUTE DARK MODE MAGIC */
+          body.dark-mode-active {
+            /* Inverts all colors (white -> black) and rotates the color wheel so blues stay blue! */
+            filter: invert(0.92) hue-rotate(180deg);
+            background-color: #f8fafc; /* Forces a solid background for the math to work */
+          }
+          
+          /* Images get "double inverted" so they don't look like scary x-rays */
+          body.dark-mode-active img, 
+          body.dark-mode-active .particles {
+            filter: invert(1) hue-rotate(180deg);
+          }
+
           /* --- DESKTOP STYLES (Replaces your old inline styles) --- */
           .responsive-header {
             display: flex;
