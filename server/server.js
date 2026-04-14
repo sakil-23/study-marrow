@@ -32,7 +32,7 @@ app.set('trust proxy', 1);
 const upload = multer({ storage: multer.memoryStorage() });
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+const aiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 // ==========================================
 // 📧 EMAIL TRANSPORTER SETUP (ZOHO MAIL)
