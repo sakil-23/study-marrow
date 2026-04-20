@@ -11,6 +11,9 @@ function CategoryPage() {
   const [materials, setMaterials] = useState([]);           
   const [currentAffairs, setCurrentAffairs] = useState([]); 
   
+  // 🚀 NEW: State for the Seamless HTML iFrame Embed
+  const [activeIframeUrl, setActiveIframeUrl] = useState(null);
+  
   // --- NAVIGATION STATE ---
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [selectedType, setSelectedType] = useState(null);
@@ -73,17 +76,12 @@ function CategoryPage() {
           .sort((a, b) => (a.order || 0) - (b.order || 0)); 
   };
 
-  // 🧠 UPGRADED SMART GROUPING: Reads custom folders first, falls back to AI guess!
   const groupedNews = getFilteredNews().reduce((groups, news) => {
-      
-      let groupName = news.groupName; // 👈 1. Look for the custom folder name you typed
-
-      // 2. If it's an older post and you didn't type a folder, guess the month!
+      let groupName = news.groupName; 
       if (!groupName || groupName.trim() === "") {
           const monthYearMatch = news.title.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s\d{4}/i);
           groupName = monthYearMatch ? monthYearMatch[0] : "General Updates";
       }
-      
       if (!groups[groupName]) {
           groups[groupName] = [];
       }
@@ -105,11 +103,9 @@ function CategoryPage() {
     return true;
   });
 
-  // 🧹 Helper to fix AI formatting mistakes before rendering
   const cleanMarkdown = (text) => {
       if (!text) return "";
       let cleaned = text;
-      
       cleaned = cleaned.replace(/\*\*(.*?)\*\*/g, (match, p1) => {
           const up = p1.toUpperCase();
           if (up.includes('POLITY') || up.includes('ECONOMY') || up.includes('INTERNATIONAL') || up.includes('SCIENCE') || up.includes('AWARDS') || up.includes('ASSAM')) {
@@ -117,19 +113,26 @@ function CategoryPage() {
           }
           return match;
       });
-
       cleaned = cleaned.replace(/### /g, '\n\n### ');
       cleaned = cleaned.replace(/\n{4,}/g, '\n\n\n');
       return cleaned;
   };
 
-  // Helper to cleanly format the inner titles (Removes the redundant "Monthly Current Affairs March 2026:")
   const getCleanInnerTitle = (fullTitle) => {
       if (fullTitle.includes(':')) {
           return fullTitle.split(':')[1].trim();
       }
       return fullTitle;
   };
+
+  // Prevent scrolling on the main page when the popup is open
+  useEffect(() => {
+      if (activeIframeUrl) {
+          document.body.style.overflow = 'hidden';
+      } else {
+          document.body.style.overflow = 'unset';
+      }
+  }, [activeIframeUrl]);
 
   return (
     <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', minHeight: '80vh' }}>
@@ -187,8 +190,6 @@ function CategoryPage() {
                   </div>
               ) : (
                   Object.entries(groupedNews).map(([monthGroup, newsItems], index) => (
-                      
-                      /* 📁 OUTER ACCORDION (The Group/Folder) */
                       <details key={monthGroup} style={groupAccordionStyle} open={index === 0}>
                           <summary style={groupSummaryStyle}>
                               <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -201,8 +202,6 @@ function CategoryPage() {
                           </summary>
                           
                           <div style={groupContentStyle}>
-                              
-                              {/* ⚡ INNER ACCORDION (The Specific Articles) */}
                               {newsItems.map(news => (
                                   <details key={news._id} style={accordionStyle}>
                                       <summary style={accordionSummaryStyle}>
@@ -214,19 +213,7 @@ function CategoryPage() {
                                           <ReactMarkdown 
                                             remarkPlugins={[remarkGfm]}
                                             components={{
-                                              h3: ({node, ...props}) => (
-                                                  <h3 style={{
-                                                      backgroundColor: '#2563eb', 
-                                                      color: 'white',
-                                                      padding: '12px 18px',
-                                                      borderRadius: '6px',
-                                                      marginTop: '30px',
-                                                      marginBottom: '15px',
-                                                      fontSize: '1.2rem',
-                                                      fontWeight: 'bold',
-                                                      boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)'
-                                                  }} {...props} />
-                                              ),
+                                              h3: ({node, ...props}) => <h3 style={markdownHeaderStyle} {...props} />,
                                               ul: ({node, ...props}) => <ul style={{ paddingLeft: '25px', marginBottom: '20px', color: '#334155' }} {...props} />,
                                               li: ({node, ...props}) => <li style={{ marginBottom: '10px', lineHeight: '1.7' }} {...props} />,
                                               p: ({node, ...props}) => <p style={{ marginBottom: '15px', lineHeight: '1.7', color: '#334155' }} {...props} />
@@ -237,9 +224,10 @@ function CategoryPage() {
                                           
                                           {news.pdfLink && (
                                               <div style={{ marginTop: '25px', paddingTop: '20px', borderTop: '1px solid #e2e8f0' }}>
-                                                  <a href={news.pdfLink} target="_blank" rel="noreferrer" style={downloadButtonStyle}>
-                                                      📄 View Official PDF
-                                                  </a>
+                                                  {/* 🚀 EXCLUSIVE IN-PORTAL BUTTON */}
+                                                  <button onClick={() => setActiveIframeUrl(news.pdfLink)} style={{...downloadButtonStyle, background: '#10b981', border: 'none', cursor: 'pointer'}}>
+                                                      📖 Read in Portal
+                                                  </button>
                                               </div>
                                           )}
                                       </div>
@@ -345,14 +333,19 @@ function CategoryPage() {
                                                 {file.subject || file.category} {file.board ? ` • ${file.board}` : ''}
                                             </small>
                                         </div>
-                                        
-                                        {file.link && (
-                                            <a href={file.link} target="_blank" rel="noreferrer" style={downloadButtonStyle}>View PDF</a>
-                                        )}
                                     </div>
                                     
+                                    {/* 🚀 EXCLUSIVE IN-PORTAL HTML EMBED BUTTON */}
+                                    {file.link && (
+                                        <div style={{ marginTop: '15px' }}>
+                                            <button onClick={() => setActiveIframeUrl(file.link)} style={{...downloadButtonStyle, background: '#10b981', border: 'none', cursor: 'pointer'}}>
+                                                📖 Read in Portal
+                                            </button>
+                                        </div>
+                                    )}
+                                    
                                     {file.description && (
-                                        <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #3b82f6', color: '#334155', whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+                                        <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #3b82f6', color: '#334155', whiteSpace: 'pre-wrap', lineHeight: '1.6', marginTop: '15px' }}>
                                             {file.description}
                                         </div>
                                     )}
@@ -366,6 +359,35 @@ function CategoryPage() {
               )}
           </>
       )}
+
+      {/* ================================================================= */}
+      {/* 🚀 THE FULL-SCREEN HTML READER MODAL */}
+      {/* ================================================================= */}
+      {activeIframeUrl && (
+          <div style={modalOverlayStyle}>
+              <div style={modalContainerStyle}>
+                  
+                  {/* Modal Header */}
+                  <div style={modalHeaderStyle}>
+                      <h3 style={{ margin: 0, color: 'white' }}>📖 Study Marrow Reader</h3>
+                      <button onClick={() => setActiveIframeUrl(null)} style={closeBtnStyle}>
+                          ✖ Close Reader
+                      </button>
+                  </div>
+
+                  {/* The iFrame rendering your HTML Notes */}
+                  <div style={{ width: '100%', height: 'calc(100% - 60px)', background: '#fff' }}>
+                      <iframe 
+                          src={activeIframeUrl} 
+                          title="Study Material"
+                          style={{ width: '100%', height: '100%', border: 'none' }}
+                          allowFullScreen
+                      />
+                  </div>
+
+              </div>
+          </div>
+      )}
     </div>
   );
 }
@@ -375,56 +397,60 @@ const cardStyle = { background: 'white', padding: '30px', borderRadius: '15px', 
 const backButtonStyle = { background: 'none', border: 'none', color: '#6366f1', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem', padding: 0 };
 const downloadButtonStyle = { textDecoration: 'none', background: '#3b82f6', color: 'white', padding: '10px 20px', borderRadius: '5px', fontSize: '0.9rem', fontWeight: 'bold', display: 'inline-block' };
 
-// --- 📁 NEW: OUTER GROUP ACCORDION STYLES (The Months) ---
-const groupAccordionStyle = { 
-    background: '#ffffff', 
-    borderRadius: '12px', 
-    border: '1px solid #cbd5e1', 
-    boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
-    marginBottom: '20px',
-    overflow: 'hidden'
-};
-const groupSummaryStyle = { 
-    padding: '20px 25px', 
-    cursor: 'pointer', 
-    fontWeight: 'bold', 
-    fontSize: '1.3rem', 
-    color: '#0f172a', 
-    background: '#f8fafc',
+const groupAccordionStyle = { background: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', marginBottom: '20px', overflow: 'hidden' };
+const groupSummaryStyle = { padding: '20px 25px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.3rem', color: '#0f172a', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0', listStyle: 'none' };
+const groupContentStyle = { padding: '20px', background: '#f1f5f9' };
+const accordionStyle = { background: 'white', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '10px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)', overflow: 'hidden' };
+const accordionSummaryStyle = { padding: '16px 20px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.05rem', color: '#1e293b', background: '#ffffff', display: 'flex', alignItems: 'center', borderBottom: '1px solid #f1f5f9' };
+const accordionContentStyle = { padding: '30px 40px', background: '#ffffff' };
+const markdownHeaderStyle = { backgroundColor: '#2563eb', color: 'white', padding: '12px 18px', borderRadius: '6px', marginTop: '30px', marginBottom: '15px', fontSize: '1.2rem', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)' };
+
+// --- 🚀 MODAL STYLES ---
+const modalOverlayStyle = {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width: '100vw',
+    height: '100vh',
+    backgroundColor: 'rgba(15, 23, 42, 0.9)', 
     display: 'flex',
+    justifyContent: 'center',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottom: '1px solid #e2e8f0',
-    listStyle: 'none' // Removes the default tiny browser arrow
-};
-const groupContentStyle = { 
-    padding: '20px', 
-    background: '#f1f5f9' // Slightly darker inside the folder to show depth
+    zIndex: 9999
 };
 
-// --- ⚡ INNER ARTICLE ACCORDION STYLES (The Chapters) ---
-const accordionStyle = { 
-    background: 'white', 
-    borderRadius: '8px', 
-    border: '1px solid #e2e8f0', 
-    marginBottom: '10px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
-    overflow: 'hidden'
-};
-const accordionSummaryStyle = { 
-    padding: '16px 20px', 
-    cursor: 'pointer', 
-    fontWeight: 'bold', 
-    fontSize: '1.05rem', 
-    color: '#1e293b', 
-    background: '#ffffff',
+const modalContainerStyle = {
+    width: '95%',
+    maxWidth: '1400px',
+    height: '90%',
+    backgroundColor: 'white',
+    borderRadius: '12px',
+    overflow: 'hidden',
+    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
     display: 'flex',
-    alignItems: 'center',
-    borderBottom: '1px solid #f1f5f9'
+    flexDirection: 'column'
 };
-const accordionContentStyle = { 
-    padding: '30px 40px', 
-    background: '#ffffff'
+
+const modalHeaderStyle = {
+    height: '60px',
+    backgroundColor: '#1e293b',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '0 25px',
+    borderBottom: '1px solid #334155'
+};
+
+const closeBtnStyle = {
+    backgroundColor: '#ef4444',
+    color: 'white',
+    border: 'none',
+    padding: '8px 16px',
+    borderRadius: '6px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    fontSize: '0.9rem',
+    transition: 'background 0.2s'
 };
 
 export default CategoryPage;
