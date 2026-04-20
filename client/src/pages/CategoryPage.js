@@ -7,31 +7,24 @@ import axios from 'axios';
 function CategoryPage() {
   const { categoryName } = useParams();
   
-  // --- STATE FOR BOTH MEDIA TYPES ---
   const [materials, setMaterials] = useState([]);           
   const [currentAffairs, setCurrentAffairs] = useState([]); 
-  
-  // 🚀 NEW: State for the Seamless HTML iFrame Embed
   const [activeIframeUrl, setActiveIframeUrl] = useState(null);
   
-  // --- NAVIGATION STATE ---
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [selectedType, setSelectedType] = useState(null);
   const [selectedBoard, setSelectedBoard] = useState(null); 
 
-  // --- SMART LOGIC FOR CLASSES & VERTICALS ---
   const isClass12 = categoryName.includes('Class 12');
   const isClass11 = categoryName.includes('Class 11');
   const isClass10 = categoryName.includes('Class 10');
   const isClass9  = categoryName.includes('Class 9');
   const isClass8  = categoryName.includes('Class 8');
   
-  // Detect Current Affairs
   const isCurrentAffairs = categoryName.includes('Current Affairs');
   const isDeepFolder = !isCurrentAffairs;
   const parentVertical = isCurrentAffairs ? 'Current Affairs' : 'School Academics';
 
-  // --- DEFINE DATA DYNAMICALLY (For School Only) ---
   let subjects = [];
   let types = [];
 
@@ -70,7 +63,7 @@ function CategoryPage() {
     }
   }, [categoryName, isCurrentAffairs]);
 
- const getFilteredNews = () => {
+  const getFilteredNews = () => {
       return currentAffairs
           .filter(news => news.category === categoryName)
           .sort((a, b) => (a.order || 0) - (b.order || 0)); 
@@ -125,7 +118,22 @@ function CategoryPage() {
       return fullTitle;
   };
 
-  // Prevent scrolling on the main page when the popup is open
+  // 🧠 NEW: Google Drive Auto-Converter
+  // This takes standard Drive links and forces them into an embeddable preview format.
+  const getEmbeddableUrl = (url) => {
+      if (!url) return "";
+      if (url.includes('drive.google.com')) {
+          // Matches links like: drive.google.com/file/d/ID/view
+          const match1 = url.match(/\/d\/(.+?)\//);
+          if (match1 && match1[1]) return `https://drive.google.com/file/d/${match1[1]}/preview`;
+          
+          // Matches links like: drive.google.com/open?id=ID
+          const match2 = url.match(/id=(.+?)(&|$)/);
+          if (match2 && match2[1]) return `https://drive.google.com/file/d/${match2[1]}/preview`;
+      }
+      return url; // Returns normal links (like your GitHub pages) untouched
+  };
+
   useEffect(() => {
       if (activeIframeUrl) {
           document.body.style.overflow = 'hidden';
@@ -175,7 +183,7 @@ function CategoryPage() {
       </h1>
 
       {/* ================================================================= */}
-      {/* 📰 CURRENT AFFAIRS VIEW (NESTED ACCORDIONS)   */}
+      {/* 📰 CURRENT AFFAIRS VIEW   */}
       {/* ================================================================= */}
       {isCurrentAffairs && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -224,9 +232,9 @@ function CategoryPage() {
                                           
                                           {news.pdfLink && (
                                               <div style={{ marginTop: '25px', paddingTop: '20px', borderTop: '1px solid #e2e8f0' }}>
-                                                  {/* 🚀 EXCLUSIVE IN-PORTAL BUTTON */}
-                                                  <button onClick={() => setActiveIframeUrl(news.pdfLink)} style={{...downloadButtonStyle, background: '#10b981', border: 'none', cursor: 'pointer'}}>
-                                                      📖 Read in Portal
+                                                  {/* 🚀 USES THE NEW CONVERTER */}
+                                                  <button onClick={() => setActiveIframeUrl(getEmbeddableUrl(news.pdfLink))} style={{...downloadButtonStyle, background: '#10b981', border: 'none', cursor: 'pointer'}}>
+                                                      📖 Read PDF in Portal
                                                   </button>
                                               </div>
                                           )}
@@ -335,10 +343,10 @@ function CategoryPage() {
                                         </div>
                                     </div>
                                     
-                                    {/* 🚀 EXCLUSIVE IN-PORTAL HTML EMBED BUTTON */}
                                     {file.link && (
                                         <div style={{ marginTop: '15px' }}>
-                                            <button onClick={() => setActiveIframeUrl(file.link)} style={{...downloadButtonStyle, background: '#10b981', border: 'none', cursor: 'pointer'}}>
+                                            {/* 🚀 USES THE NEW CONVERTER */}
+                                            <button onClick={() => setActiveIframeUrl(getEmbeddableUrl(file.link))} style={{...downloadButtonStyle, background: '#10b981', border: 'none', cursor: 'pointer'}}>
                                                 📖 Read in Portal
                                             </button>
                                         </div>
@@ -367,7 +375,6 @@ function CategoryPage() {
           <div style={modalOverlayStyle}>
               <div style={modalContainerStyle}>
                   
-                  {/* Modal Header */}
                   <div style={modalHeaderStyle}>
                       <h3 style={{ margin: 0, color: 'white' }}>📖 Study Marrow Reader</h3>
                       <button onClick={() => setActiveIframeUrl(null)} style={closeBtnStyle}>
@@ -375,7 +382,6 @@ function CategoryPage() {
                       </button>
                   </div>
 
-                  {/* The iFrame rendering your HTML Notes */}
                   <div style={{ width: '100%', height: 'calc(100% - 60px)', background: '#fff' }}>
                       <iframe 
                           src={activeIframeUrl} 
