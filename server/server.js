@@ -192,12 +192,20 @@ app.post('/api/upload', verifyAdmin, [
             if (subs.length > 0 && process.env.EMAIL_USER) {
                 const bccList = subs.map(s => s.email).filter(email => email !== process.env.EMAIL_USER).join(',');
                 if (bccList.length > 0) {
+                    
+                    // 🚀 NEW: Generate a link back to the exact Category Page on YOUR website
+                    const portalLink = `https://www.studymarrow.in/category/${encodeURIComponent(category)}`;
+
                     const mailOptions = {
                         from: `"Study Marrow" <${process.env.EMAIL_USER}>`,
                         to: `"Study Marrow Subscribers" <noreply@studymarrow.com>`, 
                         bcc: bccList, 
                         subject: `📚 New Upload: ${title}`,
-                        html: `<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden;"><div style="background-color: #0f172a; padding: 20px; text-align: center;"><h1 style="color: white; margin: 0;">Study Marrow</h1></div><div style="padding: 30px; background-color: #f8fafc;"><h2 style="color: #1e293b; margin-top: 0;">New Material Added! 🚀</h2><p style="color: #475569; font-size: 16px;">We have just uploaded a new resource to help with your preparation.</p><div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 20px 0;"><p style="margin: 5px 0;"><strong>Title:</strong> ${title}</p><p style="margin: 5px 0;"><strong>Category:</strong> ${vertical} > ${category} ${subject ? '> ' + subject : ''}</p><p style="margin: 5px 0;"><strong>Type:</strong> ${resourceType}</p></div><div style="text-align: center; margin-top: 30px;"><a href="${link}" style="background-color: #2563eb; color: white; padding: 12px 25px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Access Material</a></div></div><div style="text-align: center; padding: 15px; font-size: 12px; color: #94a3b8;">You are receiving this because you subscribed to Study Marrow updates.</div></div>`
+                        html: `<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden;"><div style="background-color: #0f172a; padding: 20px; text-align: center;"><h1 style="color: white; margin: 0;">Study Marrow</h1></div><div style="padding: 30px; background-color: #f8fafc;"><h2 style="color: #1e293b; margin-top: 0;">New Material Added! 🚀</h2><p style="color: #475569; font-size: 16px;">We have just uploaded a new resource to help with your preparation.</p><div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 20px 0;"><p style="margin: 5px 0;"><strong>Title:</strong> ${title}</p><p style="margin: 5px 0;"><strong>Category:</strong> ${vertical} > ${category} ${subject ? '> ' + subject : ''}</p><p style="margin: 5px 0;"><strong>Type:</strong> ${resourceType}</p></div><div style="text-align: center; margin-top: 30px;">
+                        
+                        <a href="${portalLink}" style="background-color: #2563eb; color: white; padding: 12px 25px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Access Material on Study Marrow</a>
+                        
+                        </div></div><div style="text-align: center; padding: 15px; font-size: 12px; color: #94a3b8;">You are receiving this because you subscribed to Study Marrow updates.</div></div>`
                     };
                     transporter.sendMail(mailOptions).catch(err => console.error("Email failed:", err));
                 }
@@ -267,7 +275,7 @@ app.post('/api/current-affairs', verifyAdmin, [
     if (!errors.isEmpty()) return res.status(400).json({ message: "Invalid input", errors: errors.array() });
 
     try {
-        const { date, title, content, category, pdfLink, groupName } = req.body; // 👈 NEW: Extracted groupName
+        const { date, title, content, category, pdfLink, groupName } = req.body; 
         
         const topItem = await CurrentAffair.findOne({ category }).sort({ order: 1 });
         const newOrder = topItem && topItem.order !== undefined ? topItem.order - 1 : 0;
@@ -278,7 +286,7 @@ app.post('/api/current-affairs', verifyAdmin, [
             content,
             category,
             pdfLink,
-            groupName: groupName || "", // 👈 NEW: Saved to DB
+            groupName: groupName || "", 
             order: newOrder
         });
 
@@ -289,7 +297,7 @@ app.post('/api/current-affairs', verifyAdmin, [
 
 app.put('/api/current-affairs/:id', verifyAdmin, async (req, res) => {
     try {
-        const { title, content, groupName } = req.body; // 👈 NEW: Extracted groupName
+        const { title, content, groupName } = req.body; 
         const updatedAffair = await CurrentAffair.findByIdAndUpdate(req.params.id, { title, content, groupName }, { new: true });
         res.json(updatedAffair);
     } catch (err) { res.status(500).json({ message: err.message }); }
@@ -309,7 +317,7 @@ app.post('/api/ai-rewrite', verifyAdmin, upload.single('pdfFile'), async (req, r
     try {
         if (!req.file) return res.status(400).json({ message: "No PDF file uploaded." });
         
-        const { title, category, pdfLink, groupName } = req.body; // 👈 NEW: Extracted groupName
+        const { title, category, pdfLink, groupName } = req.body; 
         if (!title || !category) return res.status(400).json({ message: "Title and Category are required." });
 
         console.log(`📄 Formatting PDF for Gemini: ${req.file.originalname}`);
@@ -368,7 +376,7 @@ ${formattingRules}`;
             content: rewrittenContent,
             category: category,
             pdfLink: pdfLink || "",
-            groupName: groupName || "", // 👈 NEW: Saved to DB
+            groupName: groupName || "", 
             order: newOrder
         });
 
@@ -379,7 +387,6 @@ ${formattingRules}`;
 
     } catch (error) {
         console.error("❌ AI Rewrite Error:", error);
-        // 🕵️‍♂️ Enhanced error reporting
         const serverError = error.response?.data?.error || error.response?.data?.message || error.message;
         res.status(500).json({ error: serverError });
     }
