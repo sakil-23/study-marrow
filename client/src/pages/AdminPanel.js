@@ -117,7 +117,11 @@ function AdminPanel() {
             alert('✅ Uploaded Successfully!');
             setTitle(''); setLink(''); setDescription(''); setBoard(''); 
             fetchMaterials(); 
-        } catch (err) { alert('Upload failed'); }
+        } catch (err) { 
+    console.error(err);
+    const serverError = err.response?.data?.message || err.response?.data?.errors?.[0]?.msg || err.message;
+    alert(`❌ Upload failed: ${serverError}`); 
+}
     };
 
     // 🤖 --- POST VIA AI PDF REWRITE ENGINE ---
