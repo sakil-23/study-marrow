@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
 
-const subscriberSchema = new mongoose.Schema({
-  email: { type: String, required: true, unique: true }, // unique prevents duplicate subscriptions
-  subscribedAt: { type: Date, default: Date.now }
+const SubscriberSchema = new mongoose.Schema({
+    email: { type: String, required: true, unique: true },
+    dateJoined: { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.model('Subscriber', subscriberSchema);
+module.exports = mongoose.model('Subscriber', SubscriberSchema);
