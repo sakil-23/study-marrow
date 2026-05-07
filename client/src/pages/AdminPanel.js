@@ -54,7 +54,7 @@ function AdminPanel() {
     const handleLogin = async (e) => {
         e.preventDefault();
         try {
-            const res = await axios.post('https://study-marrow-api.onrender.com/api/verify-admin', {}, {
+            const res = await axios.post('https://study-marrow-api-us.onrender.com/api/verify-admin', {}, {
                 headers: { 'admin-key': passwordInput } 
             });
             const receivedToken = res.data.token;
@@ -72,14 +72,14 @@ function AdminPanel() {
     
     const fetchMaterials = async () => {
         try {
-            const res = await axios.get('https://study-marrow-api.onrender.com/api/materials');
+            const res = await axios.get('https://study-marrow-api-us.onrender.com/api/materials');
             setMaterials(res.data);
         } catch (err) { console.error(err); }
     };
     
     const fetchSubscribers = async (currentToken) => {
         try {
-            const res = await axios.get('https://study-marrow-api.onrender.com/api/subscribe', { 
+            const res = await axios.get('https://study-marrow-api-us.onrender.com/api/subscribe', { 
                 headers: { Authorization: `Bearer ${currentToken}` } 
             });
             setSubscribers(res.data);
@@ -88,7 +88,7 @@ function AdminPanel() {
 
     const fetchCurrentAffairs = async () => {
         try {
-            const res = await axios.get('https://study-marrow-api.onrender.com/api/current-affairs');
+            const res = await axios.get('https://study-marrow-api-us.onrender.com/api/current-affairs');
             // FORCE A SORT BY ORDER SO ADMIN PANEL STAYS ORGANIZED
             const sortedData = res.data.sort((a, b) => (a.order || 0) - (b.order || 0));
             setCurrentAffairs(sortedData);
@@ -111,7 +111,7 @@ function AdminPanel() {
 
         const materialData = { vertical, category, subject: finalSubject, resourceType: finalType, link, description, board, title };
         try {
-            await axios.post('https://study-marrow-api.onrender.com/api/upload', materialData, {
+            await axios.post('https://study-marrow-api-us.onrender.com/api/upload', materialData, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             alert('✅ Uploaded Successfully!');
@@ -139,7 +139,7 @@ function AdminPanel() {
         if (caPdfLink) formData.append('pdfLink', caPdfLink);
 
         try {
-            await axios.post('https://study-marrow-api.onrender.com/api/ai-rewrite', formData, { 
+            await axios.post('https://study-marrow-api-us.onrender.com/api/ai-rewrite', formData, { 
                 headers: { 
                     Authorization: `Bearer ${token}`,
                     'Content-Type': 'multipart/form-data' 
@@ -163,7 +163,7 @@ function AdminPanel() {
     // 📝 --- SAVE EDITED CURRENT AFFAIR ---
     const handleSaveCAEdit = async () => {
         try {
-            await axios.put(`https://study-marrow-api.onrender.com/api/current-affairs/${editingCA._id}`, {
+            await axios.put(`https://study-marrow-api-us.onrender.com/api/current-affairs/${editingCA._id}`, {
                 title: editingCA.title,
                 content: editingCA.content,
                 groupName: editingCA.groupName // 👈 NEW: SAVE EDITED FOLDER NAME
@@ -178,7 +178,7 @@ function AdminPanel() {
     const handleDeleteCA = async (id) => {
         if (!window.confirm("Delete this Study Guide?")) return;
         try {
-            await axios.delete(`https://study-marrow-api.onrender.com/api/current-affairs/${id}`, {
+            await axios.delete(`https://study-marrow-api-us.onrender.com/api/current-affairs/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             fetchCurrentAffairs();
@@ -220,7 +220,7 @@ function AdminPanel() {
 
         // 6. Save to Database
         try {
-            await axios.put('https://study-marrow-api.onrender.com/api/current-affairs/reorder', { updates }, { 
+            await axios.put('https://study-marrow-api-us.onrender.com/api/current-affairs/reorder', { updates }, { 
                 headers: { Authorization: `Bearer ${token}` } 
             });
         } catch (err) { 
@@ -233,7 +233,7 @@ function AdminPanel() {
         const newTitle = window.prompt("Enter the new file name:", currentTitle);
         if (!newTitle || newTitle === currentTitle) return; 
         try {
-            await axios.put(`https://study-marrow-api.onrender.com/api/materials/${id}`, { title: newTitle }, { 
+            await axios.put(`https://study-marrow-api-us.onrender.com/api/materials/${id}`, { title: newTitle }, { 
                 headers: { Authorization: `Bearer ${token}` } 
             });
             fetchMaterials(); 
@@ -243,7 +243,7 @@ function AdminPanel() {
     const handleDelete = async (id) => {
         if (!window.confirm("Delete this file?")) return;
         try {
-            await axios.delete(`https://study-marrow-api.onrender.com/api/materials/${id}`, { 
+            await axios.delete(`https://study-marrow-api-us.onrender.com/api/materials/${id}`, { 
                 headers: { Authorization: `Bearer ${token}` } 
             });
             fetchMaterials();
@@ -274,7 +274,7 @@ function AdminPanel() {
                 });
                 return updated.sort((a, b) => a.order - b.order);
             });
-            await axios.put('https://study-marrow-api.onrender.com/api/materials/reorder', { updates }, { 
+            await axios.put('https://study-marrow-api-us.onrender.com/api/materials/reorder', { updates }, { 
                 headers: { Authorization: `Bearer ${token}` } 
             });
         } catch (err) { alert("❌ Reorder failed"); fetchMaterials(); }

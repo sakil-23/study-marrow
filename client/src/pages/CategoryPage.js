@@ -50,11 +50,11 @@ function CategoryPage() {
     setSelectedBoard(null);
 
     if (isCurrentAffairs) {
-        axios.get('https://study-marrow-api.onrender.com/api/current-affairs')
+        axios.get('https://study-marrow-api-us.onrender.com/api/current-affairs')
           .then(res => setCurrentAffairs(res.data))
           .catch(err => console.log("Error fetching news:", err));
     } else {
-        axios.get('https://study-marrow-api.onrender.com/api/materials')
+        axios.get('https://study-marrow-api-us.onrender.com/api/materials')
           .then(res => {
             const filtered = res.data.filter(item => item.category === categoryName);
             setMaterials(filtered.sort((a, b) => a.order - b.order));

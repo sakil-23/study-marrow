@@ -7,7 +7,7 @@ function Library() {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    axios.get('https://study-marrow-api.onrender.com/api/materials')
+    axios.get('https://study-marrow-api-us.onrender.com/api/materials')
       .then(res => setMaterials(res.data))
       .catch(err => console.error(err));
   }, []);
