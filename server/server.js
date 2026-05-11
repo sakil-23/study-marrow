@@ -426,4 +426,59 @@ ${formattingRules}`;
 // 🏁 START SERVER
 // ==========================================
 const PORT = process.env.PORT || 5000;
+
+// ==========================================
+// 🗺️ SEO DYNAMIC SITEMAP ROUTE
+// ==========================================
+
+// This exact same slug generator from your React frontend
+const generateSlug = (text) => {
+    if (!text) return 'study-material';
+    return text.toString().toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^\w\-]+/g, '')
+        .replace(/\-\-+/g, '-')
+        .replace(/^-+/, '')
+        .replace(/-+$/, '');
+};
+
+app.get('/sitemap.xml', async (req, res) => {
+    try {
+        // Grab EVERYTHING from your databases
+        const materials = await Material.find();
+        const affairs = await CurrentAffair.find();
+
+        // Start building the XML file format that Google requires
+        let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+        xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
+
+        // 1. Add your main static pages
+        const staticPages = ['/', '/library', '/school-academics', '/current-affairs'];
+        staticPages.forEach(page => {
+            xml += `  <url>\n    <loc>https://www.studymarrow.in${page}</loc>\n    <changefreq>daily</changefreq>\n  </url>\n`;
+        });
+
+        // 2. Add every single School Academics PDF deep link
+        materials.forEach(file => {
+            const url = `https://www.studymarrow.in/study/${generateSlug(file.category)}/${generateSlug(file.subject || 'general')}/${generateSlug(file.resourceType || 'doc')}/${generateSlug(file.title)}?id=${file._id}`;
+            xml += `  <url>\n    <loc>${url}</loc>\n    <changefreq>weekly</changefreq>\n  </url>\n`;
+        });
+
+        // 3. Add every single Current Affairs article deep link
+        affairs.forEach(news => {
+            const url = `https://www.studymarrow.in/study/current-affairs/general/article/${generateSlug(news.title)}?id=${news._id}`;
+            xml += `  <url>\n    <loc>${url}</loc>\n    <changefreq>weekly</changefreq>\n  </url>\n`;
+        });
+
+        xml += `</urlset>`;
+
+        // Tell the browser and Google that this is an XML file, not a standard webpage
+        res.header('Content-Type', 'application/xml');
+        res.send(xml);
+    } catch (error) {
+        console.error("Sitemap generation error:", error);
+        res.status(500).end();
+    }
+});
+
 app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Secure Server running on port ${PORT}`));
