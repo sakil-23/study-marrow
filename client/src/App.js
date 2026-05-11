@@ -8,14 +8,17 @@ import CategoryPage from './pages/CategoryPage';
 import Library from './pages/Library';
 import AdminPanel from './pages/AdminPanel';
 
-// 🆕 Import the SM logo from the src folder
+// 🆕 NEW SEO IMPORTS: The page Google will actually read
+import MaterialViewer from './pages/MaterialViewer'; 
+
+// Import the SM logo from the src folder
 import logo from './logo.png'; 
 
 function App() {
-  // 🌙 1. NEW: State to remember if Dark Mode is on
+  // 🌙 State to remember if Dark Mode is on
   const [isDarkMode, setIsDarkMode] = useState(false);
 
-  // 🧠 2. NEW: The Magic Logic that applies the Dark Mode to the whole page
+  // 🧠 The Magic Logic that applies the Dark Mode to the whole page
   useEffect(() => {
     if (isDarkMode) {
       document.body.classList.add('dark-mode-active');
@@ -37,7 +40,6 @@ function App() {
               alt="SM Logo" 
               className="responsive-logo"
             />
-            {/* Because we are using className="logo" on the Link, your App.css blinking colors still work here! */}
             <span className="responsive-text">Study Marrow</span>
           </Link>
 
@@ -46,7 +48,7 @@ function App() {
             <Link to="/">Home</Link>
             <Link to="/library">Library</Link> 
             
-            {/* 🌓 3. NEW: The Dark Mode Toggle Button */}
+            {/* 🌓 The Dark Mode Toggle Button */}
             <button 
               onClick={() => setIsDarkMode(!isDarkMode)} 
               style={{ background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer', padding: '5px', transition: 'transform 0.2s' }}
@@ -64,12 +66,16 @@ function App() {
           <Route path="/syn-world-23" element={<AdminPanel />} />
           <Route path="/" element={<Home />} />
           
-          {/* 🚀 DIRECT SHAREABLE LINKS */}
+          {/* DIRECT SHAREABLE LINKS */}
           <Route path="/current-affairs" element={<Home />} />
           <Route path="/school-academics" element={<Home />} />
 
           <Route path="/category/:categoryName" element={<CategoryPage />} />
           <Route path="/library" element={<Library />} />
+          
+          {/* 🚀 NEW SEO DEEP LINK ROUTE */}
+          {/* This catches deep URLs and sends them to the MaterialViewer page */}
+          <Route path="/study/:className/:subject/:materialType/:slug" element={<MaterialViewer />} />
         </Routes>
         
         {/* ========================================== */}
@@ -78,18 +84,17 @@ function App() {
         <style>{`
           /* 🌙 THE 1-MINUTE DARK MODE MAGIC */
           body.dark-mode-active {
-            /* Inverts all colors (white -> black) and rotates the color wheel so blues stay blue! */
             filter: invert(0.92) hue-rotate(180deg);
-            background-color: #f8fafc; /* Forces a solid background for the math to work */
+            background-color: #f8fafc;
           }
           
-          /* Images get "double inverted" so they don't look like scary x-rays */
           body.dark-mode-active img, 
-          body.dark-mode-active .particles {
+          body.dark-mode-active .particles,
+          body.dark-mode-active iframe { /* Added iframe so your PDFs don't invert! */
             filter: invert(1) hue-rotate(180deg);
           }
 
-          /* --- DESKTOP STYLES (Replaces your old inline styles) --- */
+          /* --- DESKTOP STYLES --- */
           .responsive-header {
             display: flex;
             align-items: center;
@@ -119,28 +124,28 @@ function App() {
           }
 
           .responsive-text {
-            white-space: nowrap; /* Prevents "STUDY" and "MARROW" from splitting into two lines */
+            white-space: nowrap;
           }
 
-          /* --- MOBILE STYLES (Fixes the squished layout on phones!) --- */
+          /* --- MOBILE STYLES --- */
           @media (max-width: 768px) {
             .responsive-header {
-              flex-direction: column; /* Stacks the logo and the nav links vertically */
+              flex-direction: column;
               gap: 15px;
               padding: 15px 10px;
             }
 
             .responsive-brand {
-              gap: 12px; /* Reduces space between the logo and text */
+              gap: 12px;
             }
 
             .responsive-logo {
-              width: 60px; /* Shrinks the giant logo for phone screens */
+              width: 60px;
               height: 60px;
             }
 
             .responsive-text {
-              font-size: 1.6rem; /* Shrinks the text slightly so it fits perfectly */
+              font-size: 1.6rem;
             }
           }
         `}</style>
