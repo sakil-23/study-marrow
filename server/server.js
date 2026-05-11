@@ -126,6 +126,36 @@ app.get('/api/materials', async (req, res) => {
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
+// 🚀 NEW SEO ROUTE: Fetch a single material by its ID (Works for both Notes & News!)
+app.get('/api/materials/:id', async (req, res) => {
+    try {
+        // 1. Try to find it in the School Academics database
+        let material = await Material.findById(req.params.id);
+        if (material) {
+            return res.json(material);
+        }
+        
+        // 2. If not found, try the Current Affairs database
+        let affair = await CurrentAffair.findById(req.params.id);
+        if (affair) {
+            // Remap the output so the React Viewer understands it perfectly
+            return res.json({
+                _id: affair._id,
+                title: affair.title,
+                category: affair.category,
+                resourceType: "Current Affairs Article",
+                link: affair.pdfLink 
+            });
+        }
+
+        // 3. If neither database has it, throw a 404
+        return res.status(404).json({ message: "Material not found" });
+    } catch (error) {
+        console.error("Error fetching single material:", error);
+        res.status(500).json({ error: "Server Error" });
+    }
+});
+
 app.put('/api/materials/reorder', verifyAdmin, async (req, res) => {
     try {
         const { updates } = req.body; 
@@ -193,7 +223,7 @@ app.post('/api/upload', verifyAdmin, [
                 const bccList = subs.map(s => s.email).filter(email => email !== process.env.EMAIL_USER).join(',');
                 if (bccList.length > 0) {
                     
-                    // 🚀 NEW: Generate a link back to the exact Category Page on YOUR website
+                    // Generate a link back to the exact Category Page on YOUR website
                     const portalLink = `https://www.studymarrow.in/category/${encodeURIComponent(category)}`;
 
                     const mailOptions = {
