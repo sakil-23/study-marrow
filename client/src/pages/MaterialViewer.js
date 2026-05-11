@@ -1,45 +1,88 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const MaterialViewer = () => {
-  // 1. Grab the dynamic pieces from the URL
-  const { className, subject, materialType, slug } = useParams();
   const [material, setMaterial] = useState(null);
+  const [error, setError] = useState(false);
+  
+  // These hooks let us read the URL and navigate back
+  const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // 2. Ask your US-based backend for this specific file
+    // 1. Grab the exact ID from the URL (e.g., ?id=12345)
+    const searchParams = new URLSearchParams(location.search);
+    const id = searchParams.get('id');
+
+    if (!id) {
+        setError(true);
+        return;
+    }
+
+    // 2. Ask the backend for that specific file
     const fetchMaterial = async () => {
       try {
-        // We will need to create this route in your server.js later!
-        const response = await axios.get(`https://study-marrow-api-us.onrender.com/api/materials/${slug}`);
+        const response = await axios.get(`https://study-marrow-api-us.onrender.com/api/materials/${id}`);
         setMaterial(response.data);
-      } catch (error) {
-        console.error("Failed to load material", error);
+      } catch (err) {
+        console.error("Failed to load material", err);
+        setError(true);
       }
     };
-    fetchMaterial();
-  }, [slug]);
 
-  if (!material) return <div>Loading your study material...</div>;
+    fetchMaterial();
+  }, [location]);
+
+  // Google Drive auto-converter (same as CategoryPage)
+  const getEmbeddableUrl = (url) => {
+      if (!url) return "";
+      if (url.includes('drive.google.com')) {
+          const match1 = url.match(/\/d\/(.+?)\//);
+          if (match1 && match1[1]) return `https://drive.google.com/file/d/${match1[1]}/preview`;
+          const match2 = url.match(/id=(.+?)(&|$)/);
+          if (match2 && match2[1]) return `https://drive.google.com/file/d/${match2[1]}/preview`;
+      }
+      return url; 
+  };
+
+  if (error) {
+      return (
+          <div style={{ padding: '40px', textAlign: 'center' }}>
+              <h2>Oops! We couldn't find that material.</h2>
+              <button onClick={() => navigate(-1)} style={{ padding: '10px 20px', cursor: 'pointer' }}>Go Back</button>
+          </div>
+      );
+  }
+
+  if (!material) {
+      return <div style={{ padding: '40px', textAlign: 'center', fontSize: '1.2rem' }}>Loading your study material... ⏳</div>;
+  }
 
   return (
-    <div className="material-container">
-      {/* 3. SEO GOLDMINE: Put the title in an h1 tag so Google reads it */}
-      <h1>{material.title}</h1>
+    <div style={{ padding: '20px', maxWidth: '1400px', margin: '0 auto' }}>
       
-      {/* Optional: Add a brief description here for even better SEO */}
-      <p>Free {materialType} for {className} {subject}.</p>
+      {/* A nice back button to return to the folders */}
+      <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', marginBottom: '20px', fontSize: '1rem' }}>
+          ← Back to Folders
+      </button>
 
-      {/* 4. Your custom iFrame pointing to your GitHub pages HTML */}
-      <div className="iframe-wrapper">
+      {/* 🚀 SEO GOLDMINE: The title is actually written on the webpage now! */}
+      <h1 style={{ marginBottom: '10px' }}>{material.title}</h1>
+      <p style={{ color: '#64748b', marginBottom: '20px' }}>
+          {material.subject || material.category} • {material.resourceType}
+      </p>
+
+      {/* The Reader Frame */}
+      <div style={{ width: '100%', height: '80vh', border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
         <iframe 
-          src={material.githubLink} 
+          src={getEmbeddableUrl(material.link)} 
           title={material.title}
-          width="100%" 
-          height="800px"
+          style={{ width: '100%', height: '100%', border: 'none' }}
+          allowFullScreen
         />
       </div>
+      
     </div>
   );
 };
