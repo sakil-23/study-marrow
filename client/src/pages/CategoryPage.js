@@ -44,6 +44,17 @@ function CategoryPage() {
 
   const isPapersFolder = selectedType === 'Previous Year Papers' || selectedType === 'Previous Year Paper';
 
+  // 🚀 NEW SEO HELPER: Turns any text into a clean URL slug
+  const generateSlug = (text) => {
+      if (!text) return 'study-material';
+      return text.toString().toLowerCase()
+          .replace(/\s+/g, '-')           // Replace spaces with -
+          .replace(/[^\w\-]+/g, '')       // Remove all non-word chars
+          .replace(/\-\-+/g, '-')         // Replace multiple - with single -
+          .replace(/^-+/, '')             // Trim - from start of text
+          .replace(/-+$/, '');            // Trim - from end of text
+  };
+
   useEffect(() => {
     setSelectedSubject(null);
     setSelectedType(null);
@@ -118,20 +129,16 @@ function CategoryPage() {
       return fullTitle;
   };
 
-  // 🧠 NEW: Google Drive Auto-Converter
-  // This takes standard Drive links and forces them into an embeddable preview format.
   const getEmbeddableUrl = (url) => {
       if (!url) return "";
       if (url.includes('drive.google.com')) {
-          // Matches links like: drive.google.com/file/d/ID/view
           const match1 = url.match(/\/d\/(.+?)\//);
           if (match1 && match1[1]) return `https://drive.google.com/file/d/${match1[1]}/preview`;
           
-          // Matches links like: drive.google.com/open?id=ID
           const match2 = url.match(/id=(.+?)(&|$)/);
           if (match2 && match2[1]) return `https://drive.google.com/file/d/${match2[1]}/preview`;
       }
-      return url; // Returns normal links (like your GitHub pages) untouched
+      return url; 
   };
 
   useEffect(() => {
@@ -221,10 +228,10 @@ function CategoryPage() {
                                           <ReactMarkdown 
                                             remarkPlugins={[remarkGfm]}
                                             components={{
-                                              h3: ({node, ...props}) => <h3 style={markdownHeaderStyle} {...props} />,
-                                              ul: ({node, ...props}) => <ul style={{ paddingLeft: '25px', marginBottom: '20px', color: '#334155' }} {...props} />,
-                                              li: ({node, ...props}) => <li style={{ marginBottom: '10px', lineHeight: '1.7' }} {...props} />,
-                                              p: ({node, ...props}) => <p style={{ marginBottom: '15px', lineHeight: '1.7', color: '#334155' }} {...props} />
+                                                h3: ({node, ...props}) => <h3 style={markdownHeaderStyle} {...props} />,
+                                                ul: ({node, ...props}) => <ul style={{ paddingLeft: '25px', marginBottom: '20px', color: '#334155' }} {...props} />,
+                                                li: ({node, ...props}) => <li style={{ marginBottom: '10px', lineHeight: '1.7' }} {...props} />,
+                                                p: ({node, ...props}) => <p style={{ marginBottom: '15px', lineHeight: '1.7', color: '#334155' }} {...props} />
                                             }}
                                           >
                                             {cleanMarkdown(news.content)}
@@ -232,10 +239,13 @@ function CategoryPage() {
                                           
                                           {news.pdfLink && (
                                               <div style={{ marginTop: '25px', paddingTop: '20px', borderTop: '1px solid #e2e8f0' }}>
-                                                  {/* 🚀 USES THE NEW CONVERTER */}
-                                                  <button onClick={() => setActiveIframeUrl(getEmbeddableUrl(news.pdfLink))} style={{...downloadButtonStyle, background: '#10b981', border: 'none', cursor: 'pointer'}}>
+                                                  {/* 🚀 SEO UPGRADE: Changed from button to deep Link */}
+                                                  <Link 
+                                                    to={`/study/current-affairs/general/article/${generateSlug(news.title)}?id=${news._id}`} 
+                                                    style={{...downloadButtonStyle, background: '#10b981', border: 'none', cursor: 'pointer'}}
+                                                  >
                                                       📖 Read PDF in Portal
-                                                  </button>
+                                                  </Link>
                                               </div>
                                           )}
                                       </div>
@@ -345,10 +355,13 @@ function CategoryPage() {
                                     
                                     {file.link && (
                                         <div style={{ marginTop: '15px' }}>
-                                            {/* 🚀 USES THE NEW CONVERTER */}
-                                            <button onClick={() => setActiveIframeUrl(getEmbeddableUrl(file.link))} style={{...downloadButtonStyle, background: '#10b981', border: 'none', cursor: 'pointer'}}>
+                                            {/* 🚀 SEO UPGRADE: Deep link passing the document ID securely! */}
+                                            <Link 
+                                              to={`/study/${generateSlug(categoryName)}/${generateSlug(file.subject || 'general')}/${generateSlug(file.resourceType || 'doc')}/${generateSlug(file.title)}?id=${file._id}`} 
+                                              style={{...downloadButtonStyle, background: '#10b981', border: 'none', cursor: 'pointer'}}
+                                            >
                                                 📖 Read in Portal
-                                            </button>
+                                            </Link>
                                         </div>
                                     )}
                                     
@@ -369,31 +382,21 @@ function CategoryPage() {
       )}
 
       {/* ================================================================= */}
-      {/* 🚀 THE FULL-SCREEN HTML READER MODAL */}
+      {/* 🕵️‍♂️ THE SEO MAGIC TRICK: Invisible Links for GoogleBot Indexing */}
       {/* ================================================================= */}
-      {activeIframeUrl && (
-          <div style={modalOverlayStyle}>
-              <div style={modalContainerStyle}>
-                  
-                  <div style={modalHeaderStyle}>
-                      <h3 style={{ margin: 0, color: 'white' }}>📖 Study Marrow Reader</h3>
-                      <button onClick={() => setActiveIframeUrl(null)} style={closeBtnStyle}>
-                          ✖ Close Reader
-                      </button>
-                  </div>
+      <div style={{ display: 'none' }}>
+        {materials.map(file => (
+            <Link key={`seo-${file._id}`} to={`/study/${generateSlug(categoryName)}/${generateSlug(file.subject || 'general')}/${generateSlug(file.resourceType || 'doc')}/${generateSlug(file.title)}?id=${file._id}`}>
+                {file.title}
+            </Link>
+        ))}
+        {currentAffairs.map(news => (
+            <Link key={`seo-${news._id}`} to={`/study/current-affairs/general/article/${generateSlug(news.title)}?id=${news._id}`}>
+                {news.title}
+            </Link>
+        ))}
+      </div>
 
-                  <div style={{ width: '100%', height: 'calc(100% - 60px)', background: '#fff' }}>
-                      <iframe 
-                          src={activeIframeUrl} 
-                          title="Study Material"
-                          style={{ width: '100%', height: '100%', border: 'none' }}
-                          allowFullScreen
-                      />
-                  </div>
-
-              </div>
-          </div>
-      )}
     </div>
   );
 }
@@ -410,53 +413,5 @@ const accordionStyle = { background: 'white', borderRadius: '8px', border: '1px 
 const accordionSummaryStyle = { padding: '16px 20px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.05rem', color: '#1e293b', background: '#ffffff', display: 'flex', alignItems: 'center', borderBottom: '1px solid #f1f5f9' };
 const accordionContentStyle = { padding: '30px 40px', background: '#ffffff' };
 const markdownHeaderStyle = { backgroundColor: '#2563eb', color: 'white', padding: '12px 18px', borderRadius: '6px', marginTop: '30px', marginBottom: '15px', fontSize: '1.2rem', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)' };
-
-// --- 🚀 MODAL STYLES ---
-const modalOverlayStyle = {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    width: '100vw',
-    height: '100vh',
-    backgroundColor: 'rgba(15, 23, 42, 0.9)', 
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 9999
-};
-
-const modalContainerStyle = {
-    width: '95%',
-    maxWidth: '1400px',
-    height: '90%',
-    backgroundColor: 'white',
-    borderRadius: '12px',
-    overflow: 'hidden',
-    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-    display: 'flex',
-    flexDirection: 'column'
-};
-
-const modalHeaderStyle = {
-    height: '60px',
-    backgroundColor: '#1e293b',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '0 25px',
-    borderBottom: '1px solid #334155'
-};
-
-const closeBtnStyle = {
-    backgroundColor: '#ef4444',
-    color: 'white',
-    border: 'none',
-    padding: '8px 16px',
-    borderRadius: '6px',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    fontSize: '0.9rem',
-    transition: 'background 0.2s'
-};
 
 export default CategoryPage;
