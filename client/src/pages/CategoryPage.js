@@ -44,15 +44,15 @@ function CategoryPage() {
 
   const isPapersFolder = selectedType === 'Previous Year Papers' || selectedType === 'Previous Year Paper';
 
-  // 🚀 NEW SEO HELPER: Turns any text into a clean URL slug
+  // 🚀 SEO HELPER: Turns any text into a clean URL slug
   const generateSlug = (text) => {
       if (!text) return 'study-material';
       return text.toString().toLowerCase()
-          .replace(/\s+/g, '-')           // Replace spaces with -
-          .replace(/[^\w\-]+/g, '')       // Remove all non-word chars
-          .replace(/\-\-+/g, '-')         // Replace multiple - with single -
-          .replace(/^-+/, '')             // Trim - from start of text
-          .replace(/-+$/, '');            // Trim - from end of text
+          .replace(/\s+/g, '-')           
+          .replace(/[^\w\-]+/g, '')       
+          .replace(/\-\-+/g, '-')         
+          .replace(/^-+/, '')             
+          .replace(/-+$/, '');            
   };
 
   useEffect(() => {
@@ -107,47 +107,12 @@ function CategoryPage() {
     return true;
   });
 
-  const cleanMarkdown = (text) => {
-      if (!text) return "";
-      let cleaned = text;
-      cleaned = cleaned.replace(/\*\*(.*?)\*\*/g, (match, p1) => {
-          const up = p1.toUpperCase();
-          if (up.includes('POLITY') || up.includes('ECONOMY') || up.includes('INTERNATIONAL') || up.includes('SCIENCE') || up.includes('AWARDS') || up.includes('ASSAM')) {
-              return `### ${p1.replace(/###/g, '').trim()}`;
-          }
-          return match;
-      });
-      cleaned = cleaned.replace(/### /g, '\n\n### ');
-      cleaned = cleaned.replace(/\n{4,}/g, '\n\n\n');
-      return cleaned;
-  };
-
   const getCleanInnerTitle = (fullTitle) => {
       if (fullTitle.includes(':')) {
           return fullTitle.split(':')[1].trim();
       }
       return fullTitle;
   };
-
-  const getEmbeddableUrl = (url) => {
-      if (!url) return "";
-      if (url.includes('drive.google.com')) {
-          const match1 = url.match(/\/d\/(.+?)\//);
-          if (match1 && match1[1]) return `https://drive.google.com/file/d/${match1[1]}/preview`;
-          
-          const match2 = url.match(/id=(.+?)(&|$)/);
-          if (match2 && match2[1]) return `https://drive.google.com/file/d/${match2[1]}/preview`;
-      }
-      return url; 
-  };
-
-  useEffect(() => {
-      if (activeIframeUrl) {
-          document.body.style.overflow = 'hidden';
-      } else {
-          document.body.style.overflow = 'unset';
-      }
-  }, [activeIframeUrl]);
 
   return (
     <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', minHeight: '80vh' }}>
@@ -190,10 +155,10 @@ function CategoryPage() {
       </h1>
 
       {/* ================================================================= */}
-      {/* 📰 CURRENT AFFAIRS VIEW   */}
+      {/* 📰 CURRENT AFFAIRS VIEW - NOW UPGRADED TO CARD LIST! */}
       {/* ================================================================= */}
       {isCurrentAffairs && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
               <p style={{ color: '#64748b', marginBottom: '10px' }}>
                   Stay informed with the latest {categoryName.toLowerCase()}, crucial for your competitive exam preparation.
               </p>
@@ -204,55 +169,46 @@ function CategoryPage() {
                       <h3>No study guides uploaded yet.</h3>
                   </div>
               ) : (
-                  Object.entries(groupedNews).map(([monthGroup, newsItems], index) => (
-                      <details key={monthGroup} style={groupAccordionStyle} open={index === 0}>
-                          <summary style={groupSummaryStyle}>
-                              <div style={{ display: 'flex', alignItems: 'center' }}>
-                                  <span style={{ marginRight: '15px', fontSize: '1.5rem' }}>🗓️</span>
-                                  {monthGroup}
-                              </div>
-                              <span style={{ background: '#e0e7ff', color: '#3730a3', padding: '4px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                  Object.entries(groupedNews).map(([monthGroup, newsItems]) => (
+                      <div key={monthGroup} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                          
+                          {/* Date/Group Header */}
+                          <div style={{ display: 'flex', alignItems: 'center', borderBottom: '2px solid #e2e8f0', paddingBottom: '10px', marginTop: '10px' }}>
+                              <span style={{ marginRight: '10px', fontSize: '1.5rem' }}>🗓️</span>
+                              <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.4rem' }}>{monthGroup}</h2>
+                              <span style={{ marginLeft: 'auto', background: '#e0e7ff', color: '#3730a3', padding: '4px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold' }}>
                                   {newsItems.length} Topics
                               </span>
-                          </summary>
-                          
-                          <div style={groupContentStyle}>
+                          </div>
+
+                          {/* Stacked Cards (Matching Academics View) */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                               {newsItems.map(news => (
-                                  <details key={news._id} style={accordionStyle}>
-                                      <summary style={accordionSummaryStyle}>
-                                          <span style={{ marginRight: '12px', fontSize: '1.2rem' }}>⚡</span>
-                                          {getCleanInnerTitle(news.title)}
-                                      </summary>
+                                  <div key={news._id} style={{ background: 'white', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                                       
-                                      <div style={accordionContentStyle}>
-                                          <ReactMarkdown 
-                                            remarkPlugins={[remarkGfm]}
-                                            components={{
-                                                h3: ({node, ...props}) => <h3 style={markdownHeaderStyle} {...props} />,
-                                                ul: ({node, ...props}) => <ul style={{ paddingLeft: '25px', marginBottom: '20px', color: '#334155' }} {...props} />,
-                                                li: ({node, ...props}) => <li style={{ marginBottom: '10px', lineHeight: '1.7' }} {...props} />,
-                                                p: ({node, ...props}) => <p style={{ marginBottom: '15px', lineHeight: '1.7', color: '#334155' }} {...props} />
-                                            }}
-                                          >
-                                            {cleanMarkdown(news.content)}
-                                          </ReactMarkdown>
-                                          
-                                          {news.pdfLink && (
-                                              <div style={{ marginTop: '25px', paddingTop: '20px', borderTop: '1px solid #e2e8f0' }}>
-                                                  {/* 🚀 SEO UPGRADE: Changed from button to deep Link */}
-                                                  <Link 
-                                                    to={`/study/current-affairs/general/article/${generateSlug(news.title)}?id=${news._id}`} 
-                                                    style={{...downloadButtonStyle, background: '#10b981', border: 'none', cursor: 'pointer'}}
-                                                  >
-                                                      📖 Read PDF in Portal
-                                                  </Link>
-                                              </div>
-                                          )}
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                          <div style={{ fontSize: '1.8rem' }}>📰</div>
+                                          <div style={{ flex: 1 }}>
+                                              <h3 style={{ margin: '0 0 5px 0', color: '#1e293b' }}>{getCleanInnerTitle(news.title)}</h3>
+                                              <small style={{ color: '#64748b', fontWeight: 'bold' }}>
+                                                  {categoryName} • {monthGroup}
+                                              </small>
+                                          </div>
                                       </div>
-                                  </details>
+                                      
+                                      <div>
+                                          <Link 
+                                              to={`/study/current-affairs/general/article/${generateSlug(news.title)}?id=${news._id}`} 
+                                              style={{...downloadButtonStyle, background: '#10b981', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px'}}
+                                          >
+                                              📖 Read in Portal
+                                          </Link>
+                                      </div>
+                                      
+                                  </div>
                               ))}
                           </div>
-                      </details>
+                      </div>
                   ))
               )}
           </div>
@@ -405,13 +361,5 @@ function CategoryPage() {
 const cardStyle = { background: 'white', padding: '30px', borderRadius: '15px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', textAlign: 'center', cursor: 'pointer', border: '1px solid #e2e8f0', transition: 'transform 0.2s' };
 const backButtonStyle = { background: 'none', border: 'none', color: '#6366f1', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem', padding: 0 };
 const downloadButtonStyle = { textDecoration: 'none', background: '#3b82f6', color: 'white', padding: '10px 20px', borderRadius: '5px', fontSize: '0.9rem', fontWeight: 'bold', display: 'inline-block' };
-
-const groupAccordionStyle = { background: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', marginBottom: '20px', overflow: 'hidden' };
-const groupSummaryStyle = { padding: '20px 25px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.3rem', color: '#0f172a', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0', listStyle: 'none' };
-const groupContentStyle = { padding: '20px', background: '#f1f5f9' };
-const accordionStyle = { background: 'white', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '10px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)', overflow: 'hidden' };
-const accordionSummaryStyle = { padding: '16px 20px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.05rem', color: '#1e293b', background: '#ffffff', display: 'flex', alignItems: 'center', borderBottom: '1px solid #f1f5f9' };
-const accordionContentStyle = { padding: '30px 40px', background: '#ffffff' };
-const markdownHeaderStyle = { backgroundColor: '#2563eb', color: 'white', padding: '12px 18px', borderRadius: '6px', marginTop: '30px', marginBottom: '15px', fontSize: '1.2rem', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)' };
 
 export default CategoryPage;
