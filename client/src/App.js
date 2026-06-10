@@ -13,6 +13,7 @@ import MaterialViewer from './pages/MaterialViewer';
 
 // Import the SM logo from the src folder
 import logo from './logo.png'; 
+import MonthlyView from './pages/MonthlyView';
 
 function App() {
   // 🌙 State to remember if Dark Mode is on
@@ -76,6 +77,7 @@ function App() {
           {/* 🚀 NEW SEO DEEP LINK ROUTE */}
           {/* This catches deep URLs and sends them to the MaterialViewer page */}
           <Route path="/study/:className/:subject/:materialType/:slug" element={<MaterialViewer />} />
+          <Route path="/current-affairs/monthly/:yearMonth" element={<MonthlyView />} />
         </Routes>
         
         {/* ========================================== */}
