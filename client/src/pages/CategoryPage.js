@@ -1,11 +1,13 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom'; // 🆕 Added useSearchParams
 import axios from 'axios';
 
 function CategoryPage() {
   const { categoryName } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams(); // 🆕 This reads the URL bar!
+  const selectedGroup = searchParams.get('group'); // 🆕 Grabs "?group=May 2026" if it exists
   
   const [materials, setMaterials] = useState([]);           
   const [currentAffairs, setCurrentAffairs] = useState([]); 
@@ -44,7 +46,7 @@ function CategoryPage() {
 
   const isPapersFolder = selectedType === 'Previous Year Papers' || selectedType === 'Previous Year Paper';
 
-  // 🚀 SEO HELPER: Turns any text into a clean URL slug
+  // 🚀 SEO HELPER
   const generateSlug = (text) => {
       if (!text) return 'study-material';
       return text.toString().toLowerCase()
@@ -125,9 +127,18 @@ function CategoryPage() {
             {parentVertical}
         </Link>
         {' > '} 
-        <span onClick={() => {setSelectedSubject(null); setSelectedType(null); setSelectedBoard(null)}} style={{ cursor: 'pointer', color: selectedSubject ? '#3b82f6' : 'black' }}>
+        <span onClick={() => {setSelectedSubject(null); setSelectedType(null); setSelectedBoard(null); setSearchParams({})}} style={{ cursor: 'pointer', color: selectedSubject || selectedGroup ? '#3b82f6' : 'black' }}>
           {categoryName.replace(' Materials', '')}
         </span>
+        
+        {/* 🆕 Breadcrumb for Current Affairs Month */}
+        {isCurrentAffairs && selectedGroup && (
+          <>
+            {' > '}
+            <span style={{ color: 'black' }}>{selectedGroup}</span>
+          </>
+        )}
+
         {selectedSubject && (
           <>
             {' > '}
@@ -155,61 +166,76 @@ function CategoryPage() {
       </h1>
 
       {/* ================================================================= */}
-      {/* 📰 CURRENT AFFAIRS VIEW - NOW UPGRADED TO CARD LIST! */}
+      {/* 📰 CURRENT AFFAIRS VIEW - NOW WITH FOLDERS & SHAREABLE URLS! */}
       {/* ================================================================= */}
       {isCurrentAffairs && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
-              <p style={{ color: '#64748b', marginBottom: '10px' }}>
-                  Stay informed with the latest {categoryName.toLowerCase()}, crucial for your competitive exam preparation.
-              </p>
-
+              
               {Object.keys(groupedNews).length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '40px', background: '#f8fafc', borderRadius: '10px', color: '#64748b' }}>
                       <span style={{ fontSize: '3rem' }}>🗞️</span>
                       <h3>No study guides uploaded yet.</h3>
                   </div>
-              ) : (
-                  Object.entries(groupedNews).map(([monthGroup, newsItems]) => (
-                      <div key={monthGroup} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                          
-                          {/* Date/Group Header */}
-                          <div style={{ display: 'flex', alignItems: 'center', borderBottom: '2px solid #e2e8f0', paddingBottom: '10px', marginTop: '10px' }}>
-                              <span style={{ marginRight: '10px', fontSize: '1.5rem' }}>🗓️</span>
-                              <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.4rem' }}>{monthGroup}</h2>
-                              <span style={{ marginLeft: 'auto', background: '#e0e7ff', color: '#3730a3', padding: '4px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold' }}>
-                                  {newsItems.length} Topics
-                              </span>
-                          </div>
-
-                          {/* Stacked Cards (Matching Academics View) */}
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                              {newsItems.map(news => (
-                                  <div key={news._id} style={{ background: 'white', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                      
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                          <div style={{ fontSize: '1.8rem' }}>📰</div>
-                                          <div style={{ flex: 1 }}>
-                                              <h3 style={{ margin: '0 0 5px 0', color: '#1e293b' }}>{getCleanInnerTitle(news.title)}</h3>
-                                              <small style={{ color: '#64748b', fontWeight: 'bold' }}>
-                                                  {categoryName} • {monthGroup}
-                                              </small>
-                                          </div>
-                                      </div>
-                                      
-                                      <div>
-                                          <Link 
-                                              to={`/study/current-affairs/general/article/${generateSlug(news.title)}?id=${news._id}`} 
-                                              style={{...downloadButtonStyle, background: '#10b981', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px'}}
-                                          >
-                                              📖 Read in Portal
-                                          </Link>
-                                      </div>
-                                      
-                                  </div>
-                              ))}
-                          </div>
+              ) : !selectedGroup ? (
+                  // 🆕 VIEW 1: THE FOLDER GRID (Shows when no month is selected)
+                  <div>
+                      <p style={{ color: '#64748b', marginBottom: '20px' }}>Select a month to view the compiled current affairs.</p>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+                          {Object.entries(groupedNews).map(([monthGroup, newsItems]) => (
+                              <div 
+                                  key={monthGroup} 
+                                  onClick={() => setSearchParams({ group: monthGroup })} // 👈 This changes the URL!
+                                  style={cardStyle}
+                                  onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
+                                  onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                              >
+                                  <div style={{ fontSize: '3rem', marginBottom: '10px' }}>📅</div>
+                                  <h3 style={{ margin: 0, color: '#1e293b' }}>{monthGroup}</h3>
+                                  <p style={{ color: '#64748b', marginTop: '5px' }}>{newsItems.length} Topics</p>
+                              </div>
+                          ))}
                       </div>
-                  ))
+                  </div>
+              ) : (
+                  // 🆕 VIEW 2: THE ARTICLE LIST (Shows when a month is clicked or linked via URL)
+                  <div>
+                      <button onClick={() => setSearchParams({})} style={backButtonStyle}>← Back to Months</button>
+                      
+                      <div style={{ display: 'flex', alignItems: 'center', borderBottom: '2px solid #e2e8f0', paddingBottom: '10px', marginTop: '20px', marginBottom: '20px' }}>
+                          <span style={{ marginRight: '10px', fontSize: '1.5rem' }}>🗓️</span>
+                          <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.4rem' }}>{selectedGroup}</h2>
+                          <span style={{ marginLeft: 'auto', background: '#e0e7ff', color: '#3730a3', padding: '4px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                              {groupedNews[selectedGroup]?.length || 0} Topics
+                          </span>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                          {(groupedNews[selectedGroup] || []).map(news => (
+                              <div key={news._id} style={{ background: 'white', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                  
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                      <div style={{ fontSize: '1.8rem' }}>📰</div>
+                                      <div style={{ flex: 1 }}>
+                                          <h3 style={{ margin: '0 0 5px 0', color: '#1e293b' }}>{getCleanInnerTitle(news.title)}</h3>
+                                          <small style={{ color: '#64748b', fontWeight: 'bold' }}>
+                                              {categoryName} • {selectedGroup}
+                                          </small>
+                                      </div>
+                                  </div>
+                                  
+                                  <div>
+                                      <Link 
+                                          to={`/study/current-affairs/general/article/${generateSlug(news.title)}?id=${news._id}`} 
+                                          style={{...downloadButtonStyle, background: '#10b981', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px'}}
+                                      >
+                                          📖 Read in Portal
+                                      </Link>
+                                  </div>
+                                  
+                              </div>
+                          ))}
+                      </div>
+                  </div>
               )}
           </div>
       )}
