@@ -138,13 +138,13 @@ app.get('/api/materials/:id', async (req, res) => {
         // 2. If not found, try the Current Affairs database
         let affair = await CurrentAffair.findById(req.params.id);
         if (affair) {
-            // Remap the output so the React Viewer understands it perfectly
             return res.json({
                 _id: affair._id,
                 title: affair.title,
                 category: affair.category,
                 resourceType: "Current Affairs Article",
-                link: affair.pdfLink 
+                link: affair.pdfLink, 
+                content: affair.content // 👈 MAKE SURE THIS LINE IS HERE!
             });
         }
 
