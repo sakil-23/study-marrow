@@ -284,6 +284,24 @@ app.get('/api/current-affairs', async (req, res) => {
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
+// 🚀 NEW ROUTE: Fetch all articles for a specific month/group (e.g., "May 2026")
+app.get('/api/current-affairs/group/:groupName', async (req, res) => {
+    try {
+        // We decode the parameter so a URL like "May%202026" becomes "May 2026"
+        const groupName = decodeURIComponent(req.params.groupName); 
+        
+        const articles = await CurrentAffair.find({ groupName: groupName }).sort({ order: 1, date: -1 });
+        
+        res.json({
+            monthName: groupName,
+            articles: articles
+        });
+    } catch (err) {
+        console.error("Error fetching group articles:", err);
+        res.status(500).json({ message: "Server error" });
+    }
+});
+
 app.put('/api/current-affairs/reorder', verifyAdmin, async (req, res) => {
     try {
         const { updates } = req.body; 
@@ -384,7 +402,7 @@ YOUR MISSION:
 
 CRITICAL FORMATTING RULES:
 - You MUST format category headers exactly as Markdown Level 3 headings.
-- Start the header line with exactly three hashes and a space (e.g., ### 🏛️ POLITY & GOVERNANCE).
+- Start the line with exactly three hashes and a space (e.g., ### 🏛️ POLITY & GOVERNANCE).
 - DO NOT put backslashes (\\) before the hashes. Do NOT escape the markdown.
 - DO NOT add empty spaces before the hashes.
 - DO NOT use bold text (**...**) for headers.
