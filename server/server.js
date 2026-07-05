@@ -32,7 +32,14 @@ app.set('trust proxy', 1);
 const upload = multer({ storage: multer.memoryStorage() });
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+// 🚀 THE FIX: Add generationConfig to lock the temperature
+const aiModel = genAI.getGenerativeModel({ 
+    model: "gemini-2.5-flash",
+    generationConfig: {
+        temperature: 0, // Forces the AI to be 100% factual and deterministic
+    }
+});
 
 // ==========================================
 // 📧 EMAIL TRANSPORTER SETUP (ZOHO MAIL)
