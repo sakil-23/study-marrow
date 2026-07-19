@@ -60,6 +60,41 @@ const MaterialViewer = () => {
       return cleaned;
   };
 
+  // 🖨️ CSS for printing/saving as a clean PDF (Includes Study Marrow Watermark)
+  const printStyles = `
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #printable-content, #printable-content * {
+        visibility: visible;
+      }
+      #printable-content {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        padding: 0;
+        margin: 0;
+        box-shadow: none;
+        border: none;
+      }
+      .no-print {
+        display: none !important;
+      }
+      #printable-content::after {
+        content: '© Study Marrow';
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        color: #cbd5e1;
+        font-size: 1.2rem;
+        font-weight: bold;
+        z-index: -1;
+      }
+    }
+  `;
+
   if (error) {
       return (
           <div style={{ padding: '40px', textAlign: 'center' }}>
@@ -76,18 +111,16 @@ const MaterialViewer = () => {
   return (
     <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
       
-      <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', marginBottom: '20px', fontSize: '1rem', fontWeight: 'bold' }}>
+      {/* Inject Print Styles */}
+      <style>{printStyles}</style>
+
+      <button className="no-print" onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', marginBottom: '20px', fontSize: '1rem', fontWeight: 'bold' }}>
           ← Back to Folders
       </button>
 
-      <h1 style={{ marginBottom: '10px', color: '#1e293b' }}>{material.title}</h1>
-      <p style={{ color: '#64748b', marginBottom: '20px', fontWeight: 'bold' }}>
-          {material.subject || material.category} • {material.resourceType}
-      </p>
-
       {/* 🧠 SMART RENDERER: Chooses between AI Text or PDF Iframe */}
       {material.content ? (
-          <div style={{ 
+          <div id="printable-content" style={{ 
               background: 'white', 
               padding: '40px 50px', 
               borderRadius: '12px', 
@@ -95,8 +128,24 @@ const MaterialViewer = () => {
               boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
               lineHeight: '1.8',
               fontSize: '1.1rem',
-              color: '#334155'
+              color: '#334155',
+              position: 'relative' // Needed to position the button
           }}>
+              
+              {/* 📥 The Download Button (Hidden during actual printing) */}
+              <button 
+                  className="no-print" 
+                  onClick={() => window.print()} 
+                  style={{ position: 'absolute', top: '40px', right: '50px', background: '#10b981', color: 'white', border: 'none', padding: '10px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 4px 6px rgba(16, 185, 129, 0.2)' }}
+              >
+                  📥 Save as PDF
+              </button>
+
+              <h1 style={{ marginBottom: '10px', color: '#1e293b', paddingRight: '140px' }}>{material.title}</h1>
+              <p style={{ color: '#64748b', marginBottom: '20px', fontWeight: 'bold' }}>
+                  {material.subject || material.category} • {material.resourceType}
+              </p>
+
               <ReactMarkdown 
                   remarkPlugins={[remarkGfm]}
                   components={{
@@ -111,15 +160,15 @@ const MaterialViewer = () => {
               
               {/* If there is ALSO a PDF link attached to the news, show a button at the bottom */}
               {material.link && (
-                  <div style={{ marginTop: '40px', paddingTop: '20px', borderTop: '2px solid #f1f5f9', textAlign: 'center' }}>
-                      <a href={material.link} target="_blank" rel="noopener noreferrer" style={{ background: '#10b981', color: 'white', padding: '12px 25px', borderRadius: '6px', textDecoration: 'none', fontWeight: 'bold', display: 'inline-block' }}>
-                          📥 Download Original PDF
+                  <div className="no-print" style={{ marginTop: '40px', paddingTop: '20px', borderTop: '2px solid #f1f5f9', textAlign: 'center' }}>
+                      <a href={material.link} target="_blank" rel="noopener noreferrer" style={{ background: '#3b82f6', color: 'white', padding: '12px 25px', borderRadius: '6px', textDecoration: 'none', fontWeight: 'bold', display: 'inline-block' }}>
+                          🔗 View Original Source
                       </a>
                   </div>
               )}
           </div>
       ) : (
-          <div style={{ width: '100%', height: '80vh', border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
+          <div className="no-print" style={{ width: '100%', height: '80vh', border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
             <iframe 
               src={getEmbeddableUrl(material.link)} 
               title={material.title}
