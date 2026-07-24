@@ -453,10 +453,9 @@ ${formattingRules}`;
 const PORT = process.env.PORT || 5000;
 
 // ==========================================
-// 🗺️ SEO DYNAMIC SITEMAP ROUTE
+// 🗺️ SEO DYNAMIC SITEMAP ROUTE (UPGRADED WITH LASTMOD)
 // ==========================================
 
-// This exact same slug generator from your React frontend
 const generateSlug = (text) => {
     if (!text) return 'study-material';
     return text.toString().toLowerCase()
@@ -469,35 +468,38 @@ const generateSlug = (text) => {
 
 app.get('/sitemap.xml', async (req, res) => {
     try {
-        // Grab EVERYTHING from your databases
         const materials = await Material.find();
         const affairs = await CurrentAffair.find();
 
-        // Start building the XML file format that Google requires
         let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
         xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
 
-        // 1. Add your main static pages
+        // 1. Add your main static pages with today's date
+        const today = new Date().toISOString();
         const staticPages = ['/', '/library', '/school-academics', '/current-affairs'];
         staticPages.forEach(page => {
-            xml += `  <url>\n    <loc>https://www.studymarrow.in${page}</loc>\n    <changefreq>daily</changefreq>\n  </url>\n`;
+            xml += `  <url>\n    <loc>https://www.studymarrow.in${page}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>daily</changefreq>\n  </url>\n`;
         });
 
-        // 2. Add every single School Academics PDF deep link
+        // 2. Add School Academics PDFs (Using their actual upload date)
         materials.forEach(file => {
             const url = `https://www.studymarrow.in/study/${generateSlug(file.category)}/${generateSlug(file.subject || 'general')}/${generateSlug(file.resourceType || 'doc')}/${generateSlug(file.title)}?id=${file._id}`;
-            xml += `  <url>\n    <loc>${url}</loc>\n    <changefreq>weekly</changefreq>\n  </url>\n`;
+            // Fallback to today if the database item lacks a date field
+            const itemDate = (file.date || file.createdAt || new Date()).toISOString();
+            
+            xml += `  <url>\n    <loc>${url}</loc>\n    <lastmod>${itemDate}</lastmod>\n    <changefreq>weekly</changefreq>\n  </url>\n`;
         });
 
-        // 3. Add every single Current Affairs article deep link
+        // 3. Add Current Affairs AI articles
         affairs.forEach(news => {
             const url = `https://www.studymarrow.in/study/current-affairs/general/article/${generateSlug(news.title)}?id=${news._id}`;
-            xml += `  <url>\n    <loc>${url}</loc>\n    <changefreq>weekly</changefreq>\n  </url>\n`;
+            const itemDate = (news.date || news.createdAt || new Date()).toISOString();
+            
+            xml += `  <url>\n    <loc>${url}</loc>\n    <lastmod>${itemDate}</lastmod>\n    <changefreq>weekly</changefreq>\n  </url>\n`;
         });
 
         xml += `</urlset>`;
 
-        // Tell the browser and Google that this is an XML file, not a standard webpage
         res.header('Content-Type', 'application/xml');
         res.send(xml);
     } catch (error) {
@@ -505,5 +507,3 @@ app.get('/sitemap.xml', async (req, res) => {
         res.status(500).end();
     }
 });
-
-app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Secure Server running on port ${PORT}`));
