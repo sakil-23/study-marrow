@@ -507,3 +507,4 @@ app.get('/sitemap.xml', async (req, res) => {
         res.status(500).end();
     }
 });
+app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Secure Server running on port ${PORT}`));
