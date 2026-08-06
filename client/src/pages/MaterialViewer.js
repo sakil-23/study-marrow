@@ -44,10 +44,17 @@ const MaterialViewer = () => {
       return url; 
   };
 
-  // 🧹 Cleans up the AI formatting to look beautiful
+ // 🧹 Cleans up the AI formatting to look beautiful
   const cleanMarkdown = (text) => {
       if (!text) return "";
       let cleaned = text;
+
+      // 🛑 NEW FIX: Strip out AI backticks and bad spacing that cause code blocks
+      cleaned = cleaned.replace(/```[a-zA-Z]*\n?/g, ''); // Removes ```markdown
+      cleaned = cleaned.replace(/```/g, ''); // Removes any closing backticks
+      cleaned = cleaned.replace(/^ {4}/gm, '  '); // Changes 4-space indents to 2-space to save lists
+
+      // Our existing logic to create beautiful blue headers
       cleaned = cleaned.replace(/\*\*(.*?)\*\*/g, (match, p1) => {
           const up = p1.toUpperCase();
           if (up.includes('POLITY') || up.includes('ECONOMY') || up.includes('INTERNATIONAL') || up.includes('SCIENCE') || up.includes('AWARDS') || up.includes('ASSAM')) {
