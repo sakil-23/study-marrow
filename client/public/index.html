@@ -2,7 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/logo.png" />
+    
+    <!-- Standard & Fallback Favicons for Crawlers and Browsers -->
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" sizes="any" />
+    <link rel="shortcut icon" href="%PUBLIC_URL%/favicon.ico" />
+    <link rel="icon" type="image/png" href="%PUBLIC_URL%/logo.png" />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#000000" />
     
@@ -18,25 +25,33 @@
       content="study marrow, current affairs, assam current affairs, class 12 notes, ncert solutions, adre preparation, apsc current affairs, weekly one liners, competitive exams" 
     />
     <meta name="msvalidate.01" content="E4061AEB4EDBBD13F4B20F1B904D61AE" />
+
+    <!-- Open Graph (Facebook, WhatsApp, LinkedIn, YouTube scrapers) -->
     <meta property="og:title" content="Study Marrow | Academic Materials & Daily Current Affairs" />
     <meta property="og:description" content="Access free study materials, NCERT solutions, Board Papers, and Weekly/Monthly Current Affairs compilations for competitive exams." />
     <meta property="og:url" content="https://www.studymarrow.in/" /> 
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://www.studymarrow.in/logo.png" />
+    <meta property="og:image" content="https://www.studymarrow.in/logo192.png" />
+    <meta property="og:image:width" content="192" />
+    <meta property="og:image:height" content="192" />
 
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Study Marrow | Academic Materials & Daily Current Affairs" />
+    <meta name="twitter:description" content="Access free study materials, NCERT solutions, Board Papers, and Weekly/Monthly Current Affairs compilations." />
+    <meta name="twitter:image" content="https://www.studymarrow.in/logo192.png" />
+
+    <!-- Structured Schema -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "Organization",
       "name": "Study Marrow",
       "url": "https://www.studymarrow.in/",
-      "logo": "https://www.studymarrow.in/logo.png"
+      "logo": "https://www.studymarrow.in/logo192.png"
     }
     </script>
 
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
-    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   </head>
